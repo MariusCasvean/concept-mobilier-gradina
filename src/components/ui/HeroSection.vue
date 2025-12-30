@@ -7,7 +7,7 @@ import { RouterLink } from 'vue-router'
     <div class="stack">
       <!-- <div class="pill">Colecție nouă</div> -->
       <h1><span class="accent">Mobilier modern sau rustic</span> de grădină, pentru o viață inspirată, în aer liber</h1>
-      <p class="muted">Descoperă design-uri premium care îmbină durabilitatea cu confortul. Realizate pentru toate anotimpurile.</p>
+      <p>Descoperă design-uri premium care îmbină durabilitatea cu confortul. Realizate pentru toate anotimpurile.</p>
       <div class="row ctas">
         <v-btn class="cta" to="/products">Explorează produse</v-btn>
         <v-btn class="cta ghost" to="/discounts">Vezi reduceri</v-btn>
@@ -41,6 +41,7 @@ h1 {
 
 .ctas {
   justify-content: center;
+  margin-top: 3rem;
 }
 
 @media (min-width: 960px) {

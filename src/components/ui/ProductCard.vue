@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { useDisplay } from 'vuetify'
+const emit = defineEmits(['details', 'add'])
 const props = defineProps({
   categorySlug: String,
   title: String,
@@ -11,7 +12,12 @@ const props = defineProps({
   slug: String,
   variant: { type: String, default: 'default' },
   to: [String, Object],
+  cardClickable: { type: Boolean, default: true },
+  ctaBehavior: { type: String, default: 'link' },
 })
+
+const display = useDisplay()
+const ctaBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
 
 const detailsTo = computed(() => {
   if (props.categorySlug && props.slug) return `/products/${props.categorySlug}/${props.slug}`
@@ -20,13 +26,15 @@ const detailsTo = computed(() => {
 })
 
 const cardTo = computed(() => props.to || detailsTo.value)
+const isCardClickable = computed(() => props.cardClickable !== false)
+const isCtaLink = computed(() => props.ctaBehavior !== 'emit')
 
 const isDiscount = computed(() => props.variant === 'discount')
 const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim()))
 </script>
 
 <template>
-  <v-card class="product" :class="{ discount: isDiscount }" elevation="2" :to="cardTo">
+  <v-card class="product" :class="{ discount: isDiscount }" elevation="2" :to="isCardClickable ? cardTo : undefined">
     <v-img :src="image" height="200" cover alt="" />
     <v-card-text class="info">
       <header class="row sp-between">
@@ -39,7 +47,22 @@ const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim(
       </header>
       <p class="muted">{{ description }}</p>
       <div class="actions">
-        <v-btn class="cta" :to="cardTo">Vezi produsul</v-btn>
+        <v-btn
+          v-if="isCtaLink"
+          class="cta"
+          :size="ctaBtnSize"
+          :to="cardTo"
+        >
+          Detalii
+        </v-btn>
+        <v-btn
+          v-else
+          class="cta"
+          :size="ctaBtnSize"
+          @click="emit('details')"
+        >
+          Detalii
+        </v-btn>
       </div>
     </v-card-text>
   </v-card>
@@ -100,8 +123,7 @@ const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim(
 .cta {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: #0b1220;
-  padding: .6rem 1rem;
-  border-radius: 10px;
+  border-radius: 6px;
 }
 .cta:hover {
   filter: brightness(1.05);

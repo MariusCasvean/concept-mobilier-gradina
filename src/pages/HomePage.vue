@@ -4,7 +4,8 @@ import HeroSection from '../components/ui/HeroSection.vue'
 import ProductCard from '../components/ui/ProductCard.vue'
 import PageLoader from '../components/ui/PageLoader.vue'
 import { useSiteStore } from '../stores/site'
-import { listProducts } from '../services/productsService'
+import { rtdb } from '../lib/firebase'
+import { listIntroTexts, listProducts } from '../services/productsService'
 
 const site = useSiteStore()
 
@@ -14,11 +15,30 @@ const products = ref([])
 const loading = ref(true)
 const error = ref('')
 
+const introTexts = ref([])
+
+const fallbackIntro = [
+  'Dispunem de o gamă variată de produse!',
+  'Orice produs este unicat, realizat cu măiestrie și dragoste. Putem executa la comandă orice componentă care va da viață grădinii, după preferințele și necesitățile tale.',
+  'Nu ezita să ne contactezi pentru consultanță și mai multe detalii despre produse sau cum poți plasa o comandă! Vei vedea că este foarte simplu și în cel mai scurt timp posibil, produsul dorit va ajunge la tine și te vei bucura de el.',
+]
+
+const introLines = computed(() => {
+  if (!rtdb) return fallbackIntro
+  const lines = introTexts.value.map((x) => String(x?.text || '').trim()).filter(Boolean)
+  return lines
+})
+
 const featuredProducts = computed(() => products.value.slice(0, 6))
 
 onMounted(async () => {
   try {
-    products.value = await listProducts()
+    const [prods, intro] = await Promise.all([
+      listProducts(),
+      listIntroTexts(),
+    ])
+    products.value = prods
+    introTexts.value = intro
   } catch (e) {
     error.value = e?.message || String(e)
   } finally {
@@ -34,15 +54,7 @@ onMounted(async () => {
       <section class="stack">
         <PageLoader v-if="loading" />
         <template v-if="!loading">
-          <h4>Dispunem de o gamă variată de produse!</h4>
-          <h4>
-            Orice produs este unicat, realizat cu măiestrie și dragoste.
-            Putem executa la comandă orice componentă care va da viață grădinii, după preferințele și necesitățile tale.
-          </h4>
-          <h4>
-            Nu ezita să ne contactezi pentru consultanță și mai multe detalii despre produse sau cum poți plasa o comandă!
-            Vei vedea că este foarte simplu și în cel mai scurt timp posibil, produsul dorit va ajunge la tine și te vei bucura de el.
-          </h4>
+          <h4 v-for="(t, idx) in introLines" :key="idx">{{ t }}</h4>
           <div v-if="error" class="muted">ERROR: {{ error }}</div>
         </template>
       </section>

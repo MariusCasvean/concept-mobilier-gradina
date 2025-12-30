@@ -14,10 +14,26 @@ const error = ref('')
 const categories = ref([])
 const products = ref([])
 
+const detailsOpen = ref(false)
+const selectedProduct = ref(null)
+
 const categorySlugById = computed(() => {
   const map = new Map()
   for (const c of categories.value) map.set(String(c.id), String(c.slug || ''))
   return map
+})
+
+const categoryTitleById = computed(() => {
+  const map = new Map()
+  for (const c of categories.value) map.set(String(c.id), String(c.title || c.slug || ''))
+  return map
+})
+
+const selectedCategoryTitle = computed(() => {
+  const p = selectedProduct.value
+  if (!p) return ''
+  const cid = String(p?.categoryId ?? '')
+  return categoryTitleById.value.get(cid) || String(p?.categorySlug || '').trim() || ''
 })
 
 const discounted = computed(() => {
@@ -29,11 +45,13 @@ const discounted = computed(() => {
     }))
 })
 
-function detailsTo(p) {
-  const categorySlug = String(p?.categorySlug || '').trim()
-  const productId = String(p?.id || '').trim()
-  if (!categorySlug || !productId) return '/products'
-  return `/products/${encodeURIComponent(categorySlug)}?productId=${encodeURIComponent(productId)}`
+function openDetails(p) {
+  selectedProduct.value = p
+  detailsOpen.value = true
+}
+
+function closeDetails() {
+  detailsOpen.value = false
 }
 
 onMounted(async () => {
@@ -78,7 +96,8 @@ onMounted(async () => {
       <ProductCard
         v-for="p in discounted"
         :key="p.id || p.slug"
-        :to="detailsTo(p)"
+        :card-clickable="false"
+        cta-behavior="emit"
         :title="p.title"
         :description="p.description"
         :image="p.image"
@@ -87,9 +106,51 @@ onMounted(async () => {
         :category-slug="p.categorySlug"
         :slug="p.slug"
         variant="discount"
-        @add="add(p)"
+        @details="openDetails(p)"
       />
     </div>
+
+    <v-dialog v-model="detailsOpen" max-width="760">
+      <v-card class="card" elevation="2">
+        <v-card-title>
+          {{ selectedProduct?.title || 'Detalii produs' }}
+        </v-card-title>
+        <v-card-text class="details">
+          <div v-if="selectedProduct?.image" class="detailsImgWrap" aria-hidden="true">
+            <img class="detailsImg" :src="selectedProduct.image" alt="" />
+          </div>
+
+          <div class="kv">
+            <div class="k muted">Categorie</div>
+            <div class="v">{{ selectedCategoryTitle || '—' }}</div>
+          </div>
+
+          <div class="kv" v-if="selectedProduct?.description">
+            <div class="k muted">Descriere</div>
+            <div class="v">{{ selectedProduct.description }}</div>
+          </div>
+
+          <div class="kv" v-if="selectedProduct?.price">
+            <div class="k muted">Preț</div>
+            <div class="v">{{ selectedProduct.price }} RON</div>
+          </div>
+
+          <div
+            class="kv"
+            v-if="selectedProduct?.showProductDiscount && String(selectedProduct?.reducedPrice || '').trim()"
+          >
+            <div class="k muted">Preț redus</div>
+            <div class="v">
+              <span>{{ selectedProduct.reducedPrice }} RON</span>
+            </div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="cyan" variant="flat" @click="closeDetails">OK</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -103,5 +164,40 @@ onMounted(async () => {
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.details {
+  display: grid;
+  gap: .85rem;
+}
+.detailsImgWrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  border-radius: 12px;
+  background: transparent;
+}
+.detailsImg {
+  width: 100%;
+  height: auto;
+  max-height: min(70vh, 520px);
+  object-fit: contain;
+  display: block;
+  border-radius: 10px;
+}
+@media (max-width: 599px) {
+  .detailsImg { max-height: min(60vh, 420px); }
+}
+.kv {
+  display: grid;
+  gap: .25rem;
+}
+.k {
+  font-size: .85rem;
+}
+.v {
+  line-height: 1.45;
 }
 </style>

@@ -3,7 +3,7 @@
 // Falls back to local mocks if RTDB isn't available.
 
 import { rtdb } from '../lib/firebase'
-import { get, ref as dbRef, query, orderByChild, equalTo } from 'firebase/database'
+import { get, ref as dbRef, query, orderByChild, equalTo, push, set, remove } from 'firebase/database'
 import { mockProducts } from '../mocks/products'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -37,6 +37,65 @@ function slugify(input) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)+/g, '')
+}
+
+function normalizeStringList(val) {
+  if (!val) return []
+  if (Array.isArray(val)) {
+    return val
+      .map((item, idx) => ({ id: String(idx), text: String(item ?? '') }))
+      .filter((x) => String(x.text).trim())
+  }
+  if (typeof val === 'object') {
+    return Object.entries(val)
+      .map(([key, item]) => {
+        if (typeof item === 'string') return { id: String(key), text: item }
+        if (item && typeof item === 'object' && typeof item.text === 'string') return { id: String(key), text: item.text }
+        return null
+      })
+      .filter(Boolean)
+      .filter((x) => String(x.text).trim())
+      .sort((a, b) => String(a.id).localeCompare(String(b.id)))
+  }
+  return []
+}
+
+export async function listIntroTexts() {
+  if (!rtdb) {
+    await sleep(40)
+    return []
+  }
+
+  const snap = await get(dbRef(rtdb, 'intro'))
+  return normalizeStringList(snap.exists() ? snap.val() : null)
+}
+
+export async function addIntroText(text) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const clean = String(text ?? '').trim()
+  if (!clean) throw new Error('Textul este obligatoriu.')
+  const nodeRef = push(dbRef(rtdb, 'intro'))
+  const id = String(nodeRef.key || '')
+  if (!id) throw new Error('Nu am putut genera ID pentru text.')
+  await set(nodeRef, clean)
+  return { id, text: clean }
+}
+
+export async function updateIntroText(id, text) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const cleanId = String(id ?? '').trim()
+  const cleanText = String(text ?? '').trim()
+  if (!cleanId) throw new Error('ID invalid.')
+  if (!cleanText) throw new Error('Textul este obligatoriu.')
+  await set(dbRef(rtdb, `intro/${cleanId}`), cleanText)
+  return { id: cleanId, text: cleanText }
+}
+
+export async function deleteIntroText(id) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const cleanId = String(id ?? '').trim()
+  if (!cleanId) throw new Error('ID invalid.')
+  await remove(dbRef(rtdb, `intro/${cleanId}`))
 }
 
 export async function listCategories() {

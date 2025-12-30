@@ -4,7 +4,7 @@ import { useDisplay } from 'vuetify'
 import { rtdb } from '../lib/firebase'
 import { ref as dbRef, update, remove, push, set } from 'firebase/database'
 import { useAdminAuthStore } from '../stores/adminAuth'
-import { listCategories, listProducts } from '../services/productsService'
+import { addIntroText, deleteIntroText, listCategories, listIntroTexts, listProducts, updateIntroText } from '../services/productsService'
 import ImageUploadField from '../components/ui/ImageUploadField.vue'
 import PageLoader from '../components/ui/PageLoader.vue'
 
@@ -14,6 +14,12 @@ const loading = ref(true)
 const error = ref('')
 const categories = ref([])
 const products = ref([])
+
+const introTexts = ref([])
+const introAddOpen = ref(false)
+const introAddValue = ref('')
+const introEditId = ref('')
+const introEditValue = ref('')
 
 const categoryEditOpen = ref(false)
 const productEditOpen = ref(false)
@@ -72,6 +78,7 @@ function getCategoryTitleById(categoryId) {
 
 const display = useDisplay()
 const actionBtnSize = computed(() => (display.xs.value ? 'x-small' : 'small'))
+const dialogActionBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
 
 const requiredRule = (v) => (String(v ?? '').trim() ? true : '')
 
@@ -126,9 +133,14 @@ async function refresh() {
   loading.value = true
   error.value = ''
   try {
-    const [cats, prods] = await Promise.all([listCategories(), listProducts()])
+    const [cats, prods, intro] = await Promise.all([listCategories(), listProducts(), listIntroTexts()])
     categories.value = cats
     products.value = prods
+    introTexts.value = intro
+    introAddOpen.value = false
+    introAddValue.value = ''
+    introEditId.value = ''
+    introEditValue.value = ''
   } catch (e) {
     error.value = e?.message || String(e)
   } finally {
@@ -368,6 +380,60 @@ async function deleteProduct(productId) {
   await remove(dbRef(rtdb, `products/${productId}`))
   await refresh()
 }
+
+function startIntroAdd() {
+  introAddOpen.value = true
+  introAddValue.value = ''
+  introEditId.value = ''
+  introEditValue.value = ''
+}
+
+function cancelIntroAdd() {
+  introAddOpen.value = false
+  introAddValue.value = ''
+}
+
+async function saveIntroAdd() {
+  error.value = ''
+  try {
+    await addIntroText(introAddValue.value)
+    await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+}
+
+function startIntroEdit(item) {
+  introEditId.value = String(item?.id || '')
+  introEditValue.value = String(item?.text || '')
+  introAddOpen.value = false
+  introAddValue.value = ''
+}
+
+function cancelIntroEdit() {
+  introEditId.value = ''
+  introEditValue.value = ''
+}
+
+async function saveIntroEdit(itemId) {
+  error.value = ''
+  try {
+    await updateIntroText(itemId, introEditValue.value)
+    await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+}
+
+async function removeIntro(itemId) {
+  error.value = ''
+  try {
+    await deleteIntroText(itemId)
+    await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+}
 </script>
 
 <template>
@@ -385,7 +451,7 @@ async function deleteProduct(productId) {
       <p class="muted">{{ error }}</p>
     </div>
 
-    <div v-else class="stack-lg">
+    <div v-else class="stack">
       <section class="stack">
         <div class="row sp-between">
           <h2 class="sectionTitle">Categorii</h2>
@@ -424,11 +490,7 @@ async function deleteProduct(productId) {
             </div>
             <v-card-text class="info">
               <div class="row sp-between">
-                <strong class="name">{{ p.title }}</strong>
-                <div class="row prices">
-                  <span v-if="p.price" class="pill" :class="{ priceOld: p.reducedPrice }">{{ p.price }} RON</span>
-                  <span v-if="p.reducedPrice" class="pill priceNew">{{ p.reducedPrice }} RON</span>
-                </div>
+                <strong class="name mb-2">{{ p.title }}</strong>
               </div>
               <p class="muted desc" :class="{ placeholder: !p.description }">{{ p.description || '' }}</p>
             </v-card-text>
@@ -441,7 +503,7 @@ async function deleteProduct(productId) {
 
         <div class="row d-flex justify-end mt-4">
           <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="openCategoryEdit(c)">
-            Editare categorie
+            Editează categorie
           </v-btn>
           <v-btn
             :size="actionBtnSize"
@@ -454,7 +516,7 @@ async function deleteProduct(productId) {
         </div>
       </div>
 
-      <div class="divider sectionDivider" />
+      <div class="divider" />
 
       <section v-if="!loading" class="stack">
         <div class="row sp-between">
@@ -485,14 +547,13 @@ async function deleteProduct(productId) {
                   <span v-if="p.showProductDiscount" class="pill discountPill">Reducere</span>
                 </div>
               </div>
-              <p class="muted desc" :class="{ placeholder: !p.description }">{{ p.description || '' }}</p>
               <div class="row sp-between align-center">
-                <span class="muted">Categorie: {{ getCategoryTitleById(p.categoryId) }}</span>
+                <span class="muted"><strong>Categorie:</strong> {{ getCategoryTitleById(p.categoryId) }}</span>
               </div>
-
-              <div class="row d-flex productActions">
+              <p class="muted desc" :class="{ placeholder: !p.description }"><strong>Descriere:</strong> {{ p.description || '' }}</p>
+              <div class="row d-flex productActions mt-2">
                 <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="openProductEdit(p)">
-                  Editare produs
+                  Editează produs
                 </v-btn>
                 <v-btn
                   :size="actionBtnSize"
@@ -506,6 +567,81 @@ async function deleteProduct(productId) {
             </v-card-text>
           </v-card>
         </div>
+      </section>
+
+      <div class="divider" />
+
+      <section class="stack">
+        <div class="row sp-between">
+          <h2 class="sectionTitle">Texte de introducere site</h2>
+          <span class="pill">{{ introTexts.length }} texte</span>
+        </div>
+
+        <div v-if="!rtdb" class="card">
+          <strong>Eroare</strong>
+          <p class="muted">Realtime Database nu este configurat.</p>
+        </div>
+
+        <template v-else>
+          <div v-if="introTexts.length === 0" class="card">
+            <strong>Nu există texte încă.</strong>
+            <p class="muted">Adaugă primul text și va apărea pe pagina Acasă.</p>
+          </div>
+
+          <div v-for="t in introTexts" :key="t.id" class="card">
+            <div v-if="introEditId === String(t.id)" class="stack">
+              <v-text-field
+                v-model="introEditValue"
+                label="Text"
+                variant="outlined"
+                density="compact"
+                hide-details
+                autocomplete="off"
+              />
+              <div class="row d-flex justify-end mt-4">
+                <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroEdit">Renunță</v-btn>
+                <v-btn :size="actionBtnSize" color="cyan" variant="flat" @click="saveIntroEdit(t.id)">Salvează</v-btn>
+              </div>
+            </div>
+            <div v-else class="stack">
+              <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
+              <div class="row d-flex justify-end mt-4">
+                <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroEdit(t)">Editează text</v-btn>
+                <v-btn
+                  :size="actionBtnSize"
+                  variant="outlined"
+                  color="red"
+                  @click="askConfirm({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeIntro(t.id) })"
+                >
+                  Șterge text
+                </v-btn>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" v-if="introAddOpen">
+            <div class="stack">
+              <v-text-field
+                v-model="introAddValue"
+                label="Text nou"
+                variant="outlined"
+                density="compact"
+                hide-details
+                autocomplete="off"
+              />
+              <div class="row d-flex justify-end">
+                <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroAdd">Renunță</v-btn>
+                <v-btn :size="actionBtnSize" color="cyan" variant="flat" @click="saveIntroAdd">Salvează</v-btn>
+              </div>
+            </div>
+          </div>
+
+          <div class="row d-flex justify-end">
+            <v-btn v-if="!introAddOpen" color="cyan" variant="flat" :size="actionBtnSize" @click="startIntroAdd">
+              Adaugă text
+            </v-btn>
+          </div>
+        </template>
       </section>
     </div>
 
@@ -533,8 +669,8 @@ async function deleteProduct(productId) {
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="categoryEditOpen = false">Renunță</v-btn>
-          <v-btn color="cyan" variant="flat" :disabled="!isCategoryValid" @click="saveCategory">Salvează</v-btn>
+          <v-btn :size="dialogActionBtnSize" variant="text" @click="categoryEditOpen = false">Renunță</v-btn>
+          <v-btn :size="dialogActionBtnSize" color="cyan" variant="flat" :disabled="!isCategoryValid" @click="saveCategory">Salvează</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -561,8 +697,8 @@ async function deleteProduct(productId) {
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="productEditOpen = false">Renunță</v-btn>
-          <v-btn color="cyan" variant="flat" class="ok" :disabled="!isProductValid" @click="saveProduct">Salvează</v-btn>
+          <v-btn :size="dialogActionBtnSize" variant="text" @click="productEditOpen = false">Renunță</v-btn>
+          <v-btn :size="dialogActionBtnSize" color="cyan" variant="flat" class="ok" :disabled="!isProductValid" @click="saveProduct">Salvează</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -601,8 +737,8 @@ async function deleteProduct(productId) {
 }
 .category {
   border: 1px solid rgba(255,255,255,.06);
-  border-left: 14px solid transparent;
-  border-radius: 16px;
+  border-left: 0.5rem solid transparent;
+  border-radius: 6px;
 }
 .categoryHead {
   display: grid;
@@ -632,8 +768,8 @@ async function deleteProduct(productId) {
 }
 .productSimple {
   border: 1px solid rgba(255,255,255,.06);
-  border-left: 14px solid transparent;
-  border-radius: 16px;
+  border-left: 0.5rem solid transparent;
+  border-radius: 6px;
 }
 .productSimpleBody {
   display: grid;
@@ -701,8 +837,8 @@ async function deleteProduct(productId) {
 .product {
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.06);
-  border-left: 14px solid transparent;
-  border-radius: 16px;
+  border-left: 0.5rem solid transparent;
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -751,18 +887,6 @@ async function deleteProduct(productId) {
   margin-top: .75rem;
 }
 @media (max-width: 599px) {
-  .category {
-    border-left-width: 10px;
-    border-radius: 14px;
-  }
-  .product {
-    border-left-width: 10px;
-    border-radius: 14px;
-  }
-  .productSimple {
-    border-left-width: 10px;
-    border-radius: 14px;
-  }
   .catThumb {
     width: min(120px, 34vw);
     border-radius: 10px;

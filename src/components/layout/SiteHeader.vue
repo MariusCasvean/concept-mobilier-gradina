@@ -69,7 +69,7 @@ const navItems = [
 .logo {
   width: 50px;
   height: 30px;
-  border-radius: 12px;
+  border-radius: 6px;
   display: grid;
   place-items: center;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
@@ -90,7 +90,7 @@ const navItems = [
   color: var(--text);
   opacity: .8;
   padding: .45rem .75rem;
-  border-radius: 999px;
+  border-radius: 6px;
 }
 .nav-link:hover {
   opacity: 1;

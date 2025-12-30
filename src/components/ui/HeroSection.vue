@@ -8,9 +8,9 @@ import { RouterLink } from 'vue-router'
       <!-- <div class="pill">Colecție nouă</div> -->
       <h1><span class="accent">Mobilier modern sau rustic</span> de grădină, pentru o viață inspirată, în aer liber</h1>
       <p class="muted">Descoperă design-uri premium care îmbină durabilitatea cu confortul. Realizate pentru toate anotimpurile.</p>
-      <div class="row">
+      <div class="row ctas">
         <v-btn class="cta" to="/products">Explorează produse</v-btn>
-        <v-btn class="cta ghost" to="/discounts">Vezi Reduceri</v-btn>
+        <v-btn class="cta ghost" to="/discounts">Vezi reduceri</v-btn>
       </div>
     </div>
   </section>
@@ -27,8 +27,7 @@ h1 {
 .cta {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: #0b1220;
-  padding: .6rem 1rem;
-  border-radius: 10px;
+  border-radius: 6px;
 }
 .cta.ghost {
   background: transparent;
@@ -38,5 +37,15 @@ h1 {
 .cta:hover {
   filter: brightness(1.05);
   text-decoration: none;
+}
+
+.ctas {
+  justify-content: center;
+}
+
+@media (min-width: 960px) {
+  .ctas {
+    justify-content: flex-start;
+  }
 }
 </style>

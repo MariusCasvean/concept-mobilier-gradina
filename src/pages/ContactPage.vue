@@ -136,17 +136,6 @@ async function send() {
           <p class="muted">mobiliergradina_art@yahoo.com</p>
         </div>
       </div>
-      <div class="card">
-        <strong>Social media</strong>
-        <div class="social-container">
-          <a alt="Facebook" href="https://www.facebook.com/fola.claudiueugen?locale=ro_RO" target="_blank">
-            <img class="social-icon" width="30px" height="30px" src="../assets/images/facebook.jpg" />
-          </a>
-          <!-- <a alt="Instagram" href="https://www.instagram.com/" target="_blank">
-            <img class="social-icon" width="30px" height="30px" src="../assets/images/instagram.png" alt="Instagram" />
-          </a> -->
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -164,15 +153,6 @@ async function send() {
   border-radius: 10px;
   padding: .7rem .8rem;
   color: var(--text);
-}
-.social-container {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-.social-icon {
-  border-radius: 50%;
-  cursor: pointer;
 }
 .btn {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));

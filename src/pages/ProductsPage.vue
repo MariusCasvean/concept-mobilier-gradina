@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useDisplay } from 'vuetify'
 import PageLoader from '../components/ui/PageLoader.vue'
 import { normalizeForSearch } from '../lib/text'
 import { listCategories, listProducts } from '../services/productsService'
@@ -11,6 +12,9 @@ const products = ref([])
 const error = ref('')
 const loading = ref(true)
 const query = ref('')
+
+const display = useDisplay()
+const seeProductsBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
 
 const productCountByCategoryId = computed(() => {
   const counts = new Map()
@@ -95,7 +99,13 @@ const filteredCategories = computed(() => {
         :key="c.id || c.slug"
         class="categoryCard"
         elevation="2"
-        :style="c.image ? { backgroundImage: `linear-gradient(180deg, rgba(11,18,32,.70), rgba(11,18,32,.92)), url(${c.image})`, borderLeft: `1rem solid ${c.background}` } : undefined"
+        :style="c.image
+          ? {
+              backgroundImage: `linear-gradient(180deg, rgba(11,18,32,.70), rgba(11,18,32,.92)), url(${c.image})`,
+              border: `1px solid ${c.background}`, 
+              borderLeft: `0.5rem solid ${c.background}`,
+            }
+          : undefined"
       >
         <v-card-text class="body">
           <div class="head">
@@ -109,7 +119,7 @@ const filteredCategories = computed(() => {
           </div>
 
           <div class="actions">
-            <v-btn variant="flat" class="cta mt-4" @click="openCategory(c)">Vezi produse ({{ getProductCount(c) }})</v-btn>
+            <v-btn variant="flat" class="cta mt-4" :size="seeProductsBtnSize" @click="openCategory(c)">Vezi produse ({{ getProductCount(c) }})</v-btn>
           </div>
         </v-card-text>
       </v-card>
@@ -192,8 +202,7 @@ const filteredCategories = computed(() => {
 .cta {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: #0b1220;
-  padding: .6rem 1rem;
-  border-radius: 10px;
+  border-radius: 6px;
 }
 .cta:hover {
   filter: brightness(1.05);

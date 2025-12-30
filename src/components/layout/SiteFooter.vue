@@ -51,6 +51,21 @@ function confirmAdmin() {
           <p class="muted">Design modern sau rustic pentru spații exterioare.</p>
           <p class="muted">Calitate, confort și stil.</p>
         </div>
+
+        <div>
+          <div class="muted font-weight-bold">Social media</div>
+          <div class="social-container">
+            <a
+              href="https://www.facebook.com/fola.claudiueugen?locale=ro_RO"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Facebook"
+            >
+              <img class="social-icon" width="30" height="30" src="../../assets/images/facebook.jpg" alt="Facebook" />
+            </a>
+          </div>
+        </div>
+
         <div>
           <div class="muted font-weight-bold">Pagini</div>
           <div class="links">
@@ -63,6 +78,25 @@ function confirmAdmin() {
               <a href="#" class="mr-1" @click.prevent="openAdminDialog">Administrare</a><v-icon size="18" color="cyan">mdi-lock</v-icon>
             </template>
           </div>
+        </div>
+
+        <div class="anpc">
+          <a
+            href="https://reclamatiisal.anpc.ro/"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Soluționarea Alternativă a Litigiilor"
+          >
+            <img class="anpc-icon" src="../../assets/images/anpc_1.png" alt="Soluționarea Alternativă a Litigiilor" />
+          </a>
+          <a
+            href="https://consumer-redress.ec.europa.eu/site-relocation_en?event=main.home2.show&lng=RO"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Soluționarea Online a Litigiilor"
+          >
+            <img class="anpc-icon" src="../../assets/images/anpc_2.png" alt="Soluționarea Online a Litigiilor" />
+          </a>
         </div>
       </div>
       <div class="row sp-between">
@@ -116,7 +150,7 @@ function confirmAdmin() {
 .logo {
   width: 50px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: 6px;
   display: grid;
   place-items: center;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
@@ -132,8 +166,28 @@ function confirmAdmin() {
   gap: .4rem;
   margin-top: .5rem;
 }
-.admin-link {
-  margin-bottom: 2rem;
+.social-container {
+  display: flex;
+  gap: 1rem;
+  margin-top: .5rem;
+}
+.social-container a,
+.social-container a:hover {
+  text-decoration: none;
+}
+.social-icon {
+  border-radius: 50%;
+  cursor: pointer;
+}
+.anpc {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.anpc-icon {
+  height: 40px;
+  border-radius: 6px;
+  cursor: pointer;
 }
 .newsletter {
   display: grid;
@@ -179,6 +233,9 @@ function confirmAdmin() {
 @media (max-width: 920px) {
   .grid {
     grid-template-columns: 1fr;
+  }
+  .anpc-icon {
+    height: 30px;
   }
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
+import { useDisplay } from 'vuetify'
 import PageLoader from '../components/ui/PageLoader.vue'
 import { normalizeForSearch } from '../lib/text'
 import { getCategoryBySlug, listProductsByCategory } from '../services/productsService'
@@ -14,6 +15,9 @@ const products = ref([])
 const loading = ref(true)
 const error = ref('')
 const query = ref('')
+
+const display = useDisplay()
+const detailsBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
 
 const category = ref(null)
 
@@ -91,7 +95,7 @@ watch(categorySlug, load)
     </div>
 
     <div v-else class="stack">
-      <div class="stickySearch">
+      <div v-if="!loading && products.length" class="stickySearch">
         <v-text-field
           v-model="query"
           variant="outlined"
@@ -110,7 +114,7 @@ watch(categorySlug, load)
       </div>
 
       <div v-else class="grid">
-      <v-card v-for="p in filteredProducts" :key="p.id || p.slug" class="product" elevation="2">
+      <v-card v-for="p in filteredProducts" :key="p.id || p.slug" class="product" elevation="2" :style="{ border: `1px solid ${p.background}`, borderLeft: `0.5rem solid ${p.background}` }">
         <div class="imgSlot" aria-hidden="true">
           <div
             v-if="Boolean(p?.showProductDiscount) && String(p?.reducedPrice || '').trim()"
@@ -124,11 +128,11 @@ watch(categorySlug, load)
         <v-card-text class="info">
           <div class="row sp-between">
             <strong class="name">{{ p.title }}</strong>
-            <span v-if="p.price" class="pill">{{ p.price }} RON</span>
           </div>
           <p v-if="p.description" class="muted desc">{{ p.description }}</p>
+          <span v-if="p.price" class="pill">{{ p.price }} RON</span>
           <div class="actions">
-            <v-btn variant="flat" class="cta" color="cyan" @click="openDetails(p)">Detalii</v-btn>
+            <v-btn variant="flat" class="cta mt-2" color="cyan" :size="detailsBtnSize" @click="openDetails(p)">Detalii</v-btn>
           </div>
         </v-card-text>
       </v-card>
@@ -223,8 +227,7 @@ watch(categorySlug, load)
 .cta {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: #0b1220;
-  padding: .6rem 1rem;
-  border-radius: 10px;
+  border-radius: 6px;
 }
 .cta:hover {
   filter: brightness(1.05);
@@ -270,8 +273,8 @@ watch(categorySlug, load)
 }
 .desc {
   display: -webkit-box;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin: 0;

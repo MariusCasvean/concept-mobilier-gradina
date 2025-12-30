@@ -85,8 +85,15 @@ a:hover {
 .pill {
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 999px;
-  padding: .35rem .7rem;
+  padding: .3rem .75rem;
   font-size: .8rem;
+  width: fit-content;
+}
+
+@media (max-width: 600px) {
+  .pill {
+    font-size: .6rem;
+  }
 }
 
 /* Avoid horizontal overflow from media and long text */

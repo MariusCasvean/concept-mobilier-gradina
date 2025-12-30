@@ -9,6 +9,8 @@ export const mockProducts = [
     slug: 'set-terasa-tecno',
     title: 'Set terasă Tecno',
     price: '€ 899',
+    reducedPrice: '€ 749',
+    showProductDiscount: true,
     image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=1200&auto=format&fit=crop',
     description: 'Set modern pentru terasă, materiale rezistente la intemperii.',
     details:
@@ -22,6 +24,8 @@ export const mockProducts = [
     slug: 'scaun-rattan-verde',
     title: 'Scaun rattan Verde',
     price: '€ 139',
+    reducedPrice: '€ 109',
+    showProductDiscount: true,
     image: 'https://images.unsplash.com/photo-1549187774-b4e9b0445b41?q=80&w=1200&auto=format&fit=crop',
     description: 'Scaun confortabil din rattan sintetic, ideal pentru grădină.',
     details:

@@ -40,6 +40,8 @@ const productForm = ref({
   title: '',
   description: '',
   price: '',
+  reducedPrice: '',
+  showProductDiscount: false,
   background: '#0b1220',
   image: '',
 })
@@ -111,6 +113,15 @@ const isProductValid = computed(() => {
   )
 })
 
+const canShowDiscountToggle = computed(() => {
+  const p = productForm.value
+  return Boolean(String(p.price || '').trim()) && Boolean(String(p.reducedPrice || '').trim())
+})
+
+watch(canShowDiscountToggle, (ok) => {
+  if (!ok) productForm.value.showProductDiscount = false
+})
+
 async function refresh() {
   loading.value = true
   error.value = ''
@@ -172,6 +183,8 @@ function openProductEdit(p) {
     title: p.title || '',
     description: p.description || '',
     price: p.price || '',
+    reducedPrice: p.reducedPrice || '',
+    showProductDiscount: Boolean(p.showProductDiscount),
     background: p.background || '#0b1220',
     image: p.image || '',
   }
@@ -186,6 +199,8 @@ function openProductCreate() {
     title: '',
     description: '',
     price: '',
+    reducedPrice: '',
+    showProductDiscount: false,
     background: '#0b1220',
     image: '',
   }
@@ -315,6 +330,8 @@ async function saveProduct() {
     title,
     description: String(p.description || '').trim(),
     price: String(p.price || '').trim(),
+    reducedPrice: String(p.reducedPrice || '').trim(),
+    showProductDiscount: Boolean(p.showProductDiscount) && canShowDiscountToggle.value,
     background: p.background || '#0b1220',
     image: p.image || '',
     updatedAt: Date.now(),
@@ -408,7 +425,10 @@ async function deleteProduct(productId) {
             <v-card-text class="info">
               <div class="row sp-between">
                 <strong class="name">{{ p.title }}</strong>
-                <span v-if="p.price" class="pill">{{ p.price }} RON</span>
+                <div class="row prices">
+                  <span v-if="p.price" class="pill" :class="{ priceOld: p.reducedPrice }">{{ p.price }} RON</span>
+                  <span v-if="p.reducedPrice" class="pill priceNew">{{ p.reducedPrice }} RON</span>
+                </div>
               </div>
               <p class="muted desc" :class="{ placeholder: !p.description }">{{ p.description || '' }}</p>
             </v-card-text>
@@ -459,7 +479,11 @@ async function deleteProduct(productId) {
             <v-card-text class="productSimpleBody">
               <div class="row sp-between">
                 <strong class="name">{{ p.title }}</strong>
-                <span v-if="p.price" class="pill">{{ p.price }} RON</span>
+                <div class="row prices">
+                  <span v-if="p.price" class="pill" :class="{ priceOld: p.reducedPrice }">{{ p.price }} RON</span>
+                  <span v-if="p.reducedPrice" class="pill priceNew">{{ p.reducedPrice }} RON</span>
+                  <span v-if="p.showProductDiscount" class="pill discountPill">Reducere</span>
+                </div>
               </div>
               <p class="muted desc" :class="{ placeholder: !p.description }">{{ p.description || '' }}</p>
               <div class="row sp-between align-center">
@@ -468,7 +492,7 @@ async function deleteProduct(productId) {
 
               <div class="row d-flex productActions">
                 <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="openProductEdit(p)">
-                  Editare
+                  Editare produs
                 </v-btn>
                 <v-btn
                   :size="actionBtnSize"
@@ -476,7 +500,7 @@ async function deleteProduct(productId) {
                   color="red"
                   @click="askConfirm({ title: 'Șterge produsul', text: `Sigur vrei să ștergi produsul ${p.title}?`, action: () => deleteProduct(p.id) })"
                 >
-                  Șterge
+                  Șterge produs
                 </v-btn>
               </div>
             </v-card-text>
@@ -523,6 +547,15 @@ async function deleteProduct(productId) {
           <v-text-field v-model="productForm.title" label="Titlu *" variant="outlined" density="compact" autocomplete="off" :rules="[requiredRule]" />
           <v-textarea v-model="productForm.description" label="Descriere *" variant="outlined" density="compact" rows="3" autocomplete="off" :rules="[requiredRule]" />
           <v-text-field v-model="productForm.price" label="Preț (RON) *" variant="outlined" density="compact" type="number" autocomplete="off" :rules="[requiredRule]" />
+          <v-text-field v-model="productForm.reducedPrice" label="Preț redus (RON)" variant="outlined" density="compact" type="number" autocomplete="off" />
+          <v-checkbox
+            v-model="productForm.showProductDiscount"
+            class="mt-n2 mb-4"
+            :disabled="!canShowDiscountToggle"
+            density="compact"
+            hide-details
+            label="Afișează în pagina de Reduceri"
+          />
           <v-text-field v-model="productForm.background" label="Fundal" variant="outlined" density="compact" type="color" autocomplete="off" />
           <ImageUploadField ref="productImageFieldRef" v-model="productForm.image" folder="products" :entity-id="productForm.id" store-as="storage" label="Imagine produs *" />
         </v-card-text>
@@ -611,6 +644,31 @@ async function deleteProduct(productId) {
 }
 .productActions {
   justify-content: flex-end;
+}
+.prices {
+  justify-content: flex-end;
+  gap: .5rem;
+}
+.priceOld {
+  opacity: .9;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+.priceNew {
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 18%, transparent),
+    color-mix(in srgb, var(--accent-2) 14%, transparent)
+  );
+}
+.discountPill {
+  border-color: color-mix(in srgb, var(--accent-2) 35%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-2) 18%, transparent),
+    color-mix(in srgb, var(--accent) 14%, transparent)
+  );
 }
 .catThumb {
   width: min(144px, 38vw);

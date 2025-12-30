@@ -3,7 +3,7 @@
 // Falls back to local mocks if RTDB isn't available.
 
 import { rtdb } from '../lib/firebase'
-import { get, ref as dbRef } from 'firebase/database'
+import { get, ref as dbRef, query, orderByChild, equalTo } from 'firebase/database'
 import { mockProducts } from '../mocks/products'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -77,6 +77,29 @@ export async function listProducts() {
 
   const snap = await get(dbRef(rtdb, 'products'))
   return normalizeList(snap.exists() ? snap.val() : null).map((p) => ({ ...p, id: String(p.id) }))
+}
+
+export async function listDiscountProducts() {
+  if (!rtdb) {
+    await sleep(80)
+    return []
+  }
+
+  // Prefer indexed query when RTDB rules include:
+  // "products": { ".indexOn": ["showProductDiscount"] }
+  // but fall back to full scan if index isn't set yet (or if legacy data stores "true" as string).
+  try {
+    const q = query(dbRef(rtdb, 'products'), orderByChild('showProductDiscount'), equalTo(true))
+    const snap = await get(q)
+    const items = normalizeList(snap.exists() ? snap.val() : null).map((p) => ({ ...p, id: String(p.id) }))
+    if (items.length) return items
+  } catch {
+    // ignore and use fallback below
+  }
+
+  const allSnap = await get(dbRef(rtdb, 'products'))
+  const all = normalizeList(allSnap.exists() ? allSnap.val() : null).map((p) => ({ ...p, id: String(p.id) }))
+  return all.filter((p) => p?.showProductDiscount === true || String(p?.showProductDiscount) === 'true')
 }
 
 export async function getCategoryBySlug(categorySlug) {

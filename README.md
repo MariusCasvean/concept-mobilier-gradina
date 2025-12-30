@@ -37,3 +37,18 @@ Open the dev URL printed in the terminal (typically http://localhost:5173).
 ## Notes
 - Images use Unsplash demo URLs; replace with your assets later.
 - This starter avoids TypeScript per request; you can add it later if needed.
+
+## Firebase Realtime Database (index for discounts)
+
+If you query discounted products using `orderByChild('showProductDiscount')` + `equalTo(true)`, RTDB requires an index.
+In the Firebase Console → Realtime Database → Rules, add this under your existing `products` rule (keep your current `.read` / `.write` rules as-is):
+
+```json
+{
+	"rules": {
+		"products": {
+			".indexOn": ["showProductDiscount"]
+		}
+	}
+}
+```

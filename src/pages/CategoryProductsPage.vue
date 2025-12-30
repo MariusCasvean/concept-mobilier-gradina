@@ -8,6 +8,7 @@ import { getCategoryBySlug, listProductsByCategory } from '../services/productsS
 const route = useRoute()
 
 const categorySlug = computed(() => String(route.params.categorySlug || ''))
+const requestedProductId = computed(() => String(route.query.productId || ''))
 
 const products = ref([])
 const loading = ref(true)
@@ -48,6 +49,12 @@ async function load() {
     products.value = items
     detailsOpen.value = false
     selectedProduct.value = null
+
+    const pid = requestedProductId.value
+    if (pid) {
+      const found = items.find((p) => String(p?.id || '') === pid)
+      if (found) openDetails(found)
+    }
   } catch (e) {
     error.value = e?.message || String(e)
   } finally {
@@ -103,6 +110,12 @@ watch(categorySlug, load)
       <div v-else class="grid">
       <v-card v-for="p in filteredProducts" :key="p.id || p.slug" class="product" elevation="2">
         <div class="imgSlot" aria-hidden="true">
+          <div
+            v-if="Boolean(p?.showProductDiscount) && String(p?.reducedPrice || '').trim()"
+            class="discountBadge"
+          >
+            Reducere
+          </div>
           <v-img v-if="p.image" :src="p.image" height="128" cover alt="" />
           <div v-else class="imgPlaceholder" />
         </div>
@@ -143,6 +156,16 @@ watch(categorySlug, load)
           <div class="kv" v-if="selectedProduct?.price">
             <div class="k muted">Preț</div>
             <div class="v">{{ selectedProduct.price }} RON</div>
+          </div>
+
+          <div
+            class="kv"
+            v-if="selectedProduct?.showProductDiscount && String(selectedProduct?.reducedPrice || '').trim()"
+          >
+            <div class="k muted">Preț redus</div>
+            <div class="v">
+              <span>{{ selectedProduct.reducedPrice }} RON</span>
+            </div>
           </div>
         </v-card-text>
         <v-card-actions>
@@ -187,6 +210,20 @@ watch(categorySlug, load)
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+.imgSlot {
+  position: relative;
+}
+.discountBadge {
+  position: absolute;
+  top: .2rem;
+  left: .2rem;
+  z-index: 2;
+  padding: .2rem .4rem;
+  border-radius: 999px;
+  font-size: .6rem;
+  color: var(--card);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 .imgSlot {
   height: 128px;

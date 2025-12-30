@@ -1,25 +1,92 @@
 <script setup>
+import { computed, onMounted, ref } from 'vue'
 import ProductCard from '../components/ui/ProductCard.vue'
+import PageLoader from '../components/ui/PageLoader.vue'
+import { rtdb } from '../lib/firebase'
 import { useSiteStore } from '../stores/site'
+import { listCategories, listDiscountProducts } from '../services/productsService'
 
 const site = useSiteStore()
 const add = () => site.incrementCart()
 
-const items = [
-  { title: 'Coastal Chair', price: '$199 → $149', description: 'Lightweight and stackable chair.', image: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=80&w=1200&auto=format&fit=crop', slug: 'coastal-chair' },
-  { title: 'Lagoon Umbrella', price: '$249 → $189', description: 'UV50+ canopy with tilt function.', image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop', slug: 'lagoon-umbrella' },
-]
+const loading = ref(true)
+const error = ref('')
+const categories = ref([])
+const products = ref([])
+
+const categorySlugById = computed(() => {
+  const map = new Map()
+  for (const c of categories.value) map.set(String(c.id), String(c.slug || ''))
+  return map
+})
+
+const discounted = computed(() => {
+  return products.value
+    .filter((p) => Boolean(p?.showProductDiscount) && String(p?.price || '').trim() && String(p?.reducedPrice || '').trim())
+    .map((p) => ({
+      ...p,
+      categorySlug: p.categorySlug || categorySlugById.value.get(String(p.categoryId || '')) || '',
+    }))
+})
+
+function detailsTo(p) {
+  const categorySlug = String(p?.categorySlug || '').trim()
+  const productId = String(p?.id || '').trim()
+  if (!categorySlug || !productId) return '/products'
+  return `/products/${encodeURIComponent(categorySlug)}?productId=${encodeURIComponent(productId)}`
+}
+
+onMounted(async () => {
+  loading.value = true
+  error.value = ''
+  try {
+    if (!rtdb) {
+      categories.value = []
+      products.value = []
+      error.value = 'Pagina de Reduceri nu este disponibilă fără baza de date configurată.'
+      return
+    }
+    const [cats, prods] = await Promise.all([listCategories(), listDiscountProducts()])
+    categories.value = cats
+    products.value = prods
+  } catch (e) {
+    error.value = e?.message || String(e)
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
   <div class="stack-lg">
     <h1>Reduceri</h1>
     <p class="muted">Oferte limitate la mobilierul de exterior selectat.</p>
-    <div class="grid">
+
+    <PageLoader v-if="loading" />
+
+    <div v-else-if="error" class="card">
+      <strong>Eroare</strong>
+      <p class="muted">{{ error }}</p>
+    </div>
+
+    <div v-else-if="discounted.length === 0" class="card">
+      <strong>Momentan nu există produse la reducere.</strong>
+      <p class="muted">Revino mai târziu pentru oferte noi.</p>
+    </div>
+
+    <div v-else class="grid">
       <ProductCard
-        v-for="p in items"
-        :key="p.slug"
-        v-bind="p"
+        v-for="p in discounted"
+        :key="p.id || p.slug"
+        :to="detailsTo(p)"
+        :title="p.title"
+        :description="p.description"
+        :image="p.image"
+        :price="String(p.price || '')"
+        :reduced-price="String(p.reducedPrice || '')"
+        :category-slug="p.categorySlug"
+        :slug="p.slug"
+        variant="discount"
         @add="add(p)"
       />
     </div>

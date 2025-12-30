@@ -95,7 +95,7 @@ function confirmAdmin() {
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="cancelAdmin">Renunță</v-btn>
-          <v-btn color="cyan" variant="flat" class="ok" @click="confirmAdmin">Ok</v-btn>
+          <v-btn color="cyan" variant="flat" @click="confirmAdmin">Ok</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -168,10 +168,6 @@ function confirmAdmin() {
 .error {
   margin: 0;
   color: #fca5a5;
-}
-.ok {
-  color: #0b1220;
-  font-weight: 800;
 }
 .btn:hover {
   filter: brightness(1.05);

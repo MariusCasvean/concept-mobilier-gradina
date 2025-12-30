@@ -141,7 +141,7 @@ watch(categorySlug, load)
 
     <v-dialog v-model="detailsOpen" max-width="760">
       <v-card class="card" elevation="2">
-        <v-card-title>
+        <v-card-title class="detailsTitle">
           {{ selectedProduct?.title || 'Detalii produs' }}
         </v-card-title>
         <v-card-text class="details">
@@ -287,6 +287,12 @@ watch(categorySlug, load)
 .details {
   display: grid;
   gap: .85rem;
+}
+.detailsTitle {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.25;
 }
 .detailsImgWrap {
   width: 100%;

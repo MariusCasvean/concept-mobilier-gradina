@@ -674,7 +674,7 @@ async function persistFooterOrder() {
 <template>
   <div class="stack-lg">
     <header class="row sp-between">
-      <h1>Administrare site</h1>
+      <h1>Administrare</h1>
       <div v-if="!loading" class="row">
       </div>
     </header>

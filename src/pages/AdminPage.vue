@@ -24,6 +24,12 @@ const introEditValue = ref('')
 const introAddTouched = ref(false)
 const introEditTouched = ref(false)
 
+const categoriesSectionOpen = ref(false)
+const productsSectionOpen = ref(false)
+const introSectionOpen = ref(false)
+
+const chevronFor = (open) => (open ? 'mdi-chevron-up' : 'mdi-chevron-down')
+
 const introAddTrimmed = computed(() => String(introAddValue.value ?? '').trim())
 const introEditTrimmed = computed(() => String(introEditValue.value ?? '').trim())
 
@@ -90,6 +96,7 @@ function getCategoryTitleById(categoryId) {
 const display = useDisplay()
 const actionBtnSize = computed(() => (display.xs.value ? 'x-small' : 'small'))
 const dialogActionBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
+const isMobile = computed(() => display.xs.value)
 
 const requiredRule = (v) => (String(v ?? '').trim() ? true : '')
 
@@ -505,118 +512,167 @@ async function persistIntroOrder() {
       <section class="stack">
         <div class="row sp-between">
           <h2 class="sectionTitle">Categorii</h2>
-          <span class="pill">{{ categories.length }} {{ categories.length === 1 ? 'categorie' : 'categorii' }}</span>
+          <div class="row" style="gap: .25rem;">
+            <span class="pill">{{ categories.length }} {{ categories.length === 1 ? 'categorie' : 'categorii' }}</span>
+            <v-btn
+              :size="actionBtnSize"
+              variant="text"
+              :icon="chevronFor(categoriesSectionOpen)"
+              @click="categoriesSectionOpen = !categoriesSectionOpen"
+            />
+          </div>
         </div>
-        <v-btn color="cyan" variant="flat" class="ok" :size="actionBtnSize" @click="openCategoryCreate">Adaugă categorie nouă</v-btn>
+
+        <v-expand-transition>
+          <div v-show="categoriesSectionOpen" class="stack">
+            <div class="row d-flex justify-end">
+              <v-btn
+                color="cyan"
+                variant="flat"
+                class="ok"
+                :size="actionBtnSize"
+                @click="openCategoryCreate"
+              >
+                Adaugă categorie nouă
+              </v-btn>
+            </div>
+          </div>
+        </v-expand-transition>
       </section>
 
-      <div v-for="c in categories" :key="c.id" class="card category" :style="{ borderLeftColor: c.background || 'transparent' }">
-        <div class="row sp-between categoryHead">
-          <div class="stack">
-            <strong>{{ c.title }}</strong>
-            <p v-if="c.description" class="muted">{{ c.description }}</p>
-          </div>
-          <div class="catThumb" aria-hidden="true">
-            <img v-if="c.image" class="catThumbImg" :src="c.image" alt="" />
-            <div v-else class="catThumbEmpty">
-              <v-icon size="56">mdi-cloud-upload</v-icon>
-            </div>
-          </div>
-        </div>
-
-        <div class="divider" />
-
-        <div class="grid">
-          <v-card
-            v-for="p in (productsByCategoryId.get(String(c.id)) || [])"
-            :key="p.id"
-            class="product productInCategory"
-            elevation="2"
-            :style="{ borderLeftColor: p.background || 'transparent' }"
-          >
-            <div class="imgSlot" aria-hidden="true">
-              <v-img v-if="p.image" :src="p.image" height="120" cover alt="" />
-              <div v-else class="imgPlaceholder" />
-            </div>
-            <v-card-text class="info">
-              <div class="row sp-between">
-                <strong class="name mb-2">{{ p.title }}</strong>
+      <v-expand-transition>
+        <div v-show="categoriesSectionOpen" class="stack">
+          <div v-for="c in categories" :key="c.id" class="card category" :style="{ borderLeftColor: c.background || 'transparent' }">
+            <div class="row sp-between categoryHead">
+              <div class="stack">
+                <strong>{{ c.title }}</strong>
+                <p v-if="c.description" class="muted">{{ c.description }}</p>
               </div>
-              <p class="muted desc" :class="{ placeholder: !p.description }">{{ p.description || '' }}</p>
-            </v-card-text>
-          </v-card>
-        </div>
+              <div class="catThumb" aria-hidden="true">
+                <img v-if="c.image" class="catThumbImg" :src="c.image" alt="" />
+                <div v-else class="catThumbEmpty">
+                  <v-icon size="56">mdi-cloud-upload</v-icon>
+                </div>
+              </div>
+            </div>
 
-        <div v-if="(productsByCategoryId.get(String(c.id)) || []).length === 0" class="muted empty">
-          Nu există produse asociate acestei categorii.
-        </div>
+            <div class="divider" />
 
-        <div class="row d-flex justify-end mt-4">
-          <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="openCategoryEdit(c)">
-            Editează categorie
-          </v-btn>
-          <v-btn
-            :size="actionBtnSize"
-            variant="outlined"
-            color="red"
-            @click="askConfirm({ title: 'Șterge categoria', text: `Sigur vrei să ștergi categoria ${c.title}?`, action: () => deleteCategory(c.id) })"
-          >
-            Șterge categorie
-          </v-btn>
+            <div class="grid">
+              <v-card
+                v-for="p in (productsByCategoryId.get(String(c.id)) || [])"
+                :key="p.id"
+                class="product productInCategory"
+                elevation="2"
+                :style="{ borderLeftColor: p.background || 'transparent' }"
+              >
+                <div class="imgSlot" aria-hidden="true">
+                  <v-img v-if="p.image" :src="p.image" height="120" cover alt="" />
+                  <div v-else class="imgPlaceholder" />
+                </div>
+                <v-card-text class="info">
+                  <div class="row sp-between">
+                    <strong class="name mb-2">{{ p.title }}</strong>
+                  </div>
+                  <p class="muted desc" :class="{ placeholder: !p.description }">{{ p.description || '' }}</p>
+                </v-card-text>
+              </v-card>
+            </div>
+
+            <div v-if="(productsByCategoryId.get(String(c.id)) || []).length === 0" class="muted empty">
+              Nu există produse asociate acestei categorii.
+            </div>
+
+            <div class="row d-flex justify-end mt-4">
+              <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="openCategoryEdit(c)">
+                Editează categorie
+              </v-btn>
+              <v-btn
+                :size="actionBtnSize"
+                variant="outlined"
+                color="red"
+                @click="askConfirm({ title: 'Șterge categoria', text: `Sigur vrei să ștergi categoria ${c.title}?`, action: () => deleteCategory(c.id) })"
+              >
+                Șterge categorie
+              </v-btn>
+            </div>
+          </div>
         </div>
-      </div>
+      </v-expand-transition>
 
       <div class="divider" />
 
       <section v-if="!loading" class="stack">
         <div class="row sp-between">
           <h2 class="sectionTitle">Produse</h2>
-          <span class="pill">{{ products.length }} produse</span>
+          <div class="row" style="gap: .25rem;">
+            <span class="pill">{{ products.length }} produse</span>
+            <v-btn
+              :size="actionBtnSize"
+              variant="text"
+              :icon="chevronFor(productsSectionOpen)"
+              @click="productsSectionOpen = !productsSectionOpen"
+            />
+          </div>
         </div>
-        <v-btn color="cyan" variant="flat" :size="actionBtnSize" @click="openProductCreate">Adaugă produs nou</v-btn>
 
-        <div class="productsGrid">
-          <v-card
-            v-for="p in products"
-            :key="p.id"
-            class="productSimple"
-            elevation="2"
-            :style="{ borderLeftColor: p.background || 'transparent' }"
-          >
-            <div class="productSimpleMedia" aria-hidden="true">
-              <v-img v-if="p.image" :src="p.image" height="120" cover alt="" />
-              <div v-else class="imgPlaceholder" />
+        <v-expand-transition>
+          <div v-show="productsSectionOpen" class="stack">
+            <div class="row d-flex justify-end">
+              <v-btn
+                color="cyan"
+                variant="flat"
+                :size="actionBtnSize"
+                @click="openProductCreate"
+              >
+                Adaugă produs nou
+              </v-btn>
             </div>
 
-            <v-card-text class="productSimpleBody">
-              <div class="row sp-between">
-                <strong class="name">{{ p.title }}</strong>
-                <div class="row prices">
-                  <span v-if="p.price" class="pill" :class="{ priceOld: p.reducedPrice }">{{ p.price }} RON</span>
-                  <span v-if="p.reducedPrice" class="pill priceNew">{{ p.reducedPrice }} RON</span>
-                  <span v-if="p.showProductDiscount" class="pill discountPill">Reducere</span>
+            <div class="productsGrid">
+              <v-card
+                v-for="p in products"
+                :key="p.id"
+                class="productSimple"
+                elevation="2"
+                :style="{ borderLeftColor: p.background || 'transparent' }"
+              >
+                <div class="productSimpleMedia" aria-hidden="true">
+                  <v-img v-if="p.image" :src="p.image" height="120" cover alt="" />
+                  <div v-else class="imgPlaceholder" />
                 </div>
-              </div>
-              <div class="row sp-between align-center">
-                <span class="muted"><strong>Categorie:</strong> {{ getCategoryTitleById(p.categoryId) }}</span>
-              </div>
-              <p class="muted desc" :class="{ placeholder: !p.description }"><strong>Descriere:</strong> {{ p.description || '' }}</p>
-              <div class="row d-flex productActions mt-2">
-                <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="openProductEdit(p)">
-                  Editează produs
-                </v-btn>
-                <v-btn
-                  :size="actionBtnSize"
-                  variant="outlined"
-                  color="red"
-                  @click="askConfirm({ title: 'Șterge produsul', text: `Sigur vrei să ștergi produsul ${p.title}?`, action: () => deleteProduct(p.id) })"
-                >
-                  Șterge produs
-                </v-btn>
-              </div>
-            </v-card-text>
-          </v-card>
-        </div>
+
+                <v-card-text class="productSimpleBody">
+                  <div class="row sp-between">
+                    <strong class="name">{{ p.title }}</strong>
+                    <div class="row prices">
+                      <span v-if="p.price" class="pill" :class="{ priceOld: p.reducedPrice }">{{ p.price }} RON</span>
+                      <span v-if="p.reducedPrice" class="pill priceNew">{{ p.reducedPrice }} RON</span>
+                      <span v-if="p.showProductDiscount" class="pill discountPill">Reducere</span>
+                    </div>
+                  </div>
+                  <div class="row sp-between align-center">
+                    <span class="muted"><strong>Categorie:</strong> {{ getCategoryTitleById(p.categoryId) }}</span>
+                  </div>
+                  <p class="muted desc" :class="{ placeholder: !p.description }"><strong>Descriere:</strong> {{ p.description || '' }}</p>
+                  <div class="row d-flex productActions mt-2">
+                    <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="openProductEdit(p)">
+                      Editează produs
+                    </v-btn>
+                    <v-btn
+                      :size="actionBtnSize"
+                      variant="outlined"
+                      color="red"
+                      @click="askConfirm({ title: 'Șterge produsul', text: `Sigur vrei să ștergi produsul ${p.title}?`, action: () => deleteProduct(p.id) })"
+                    >
+                      Șterge produs
+                    </v-btn>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </div>
+          </div>
+        </v-expand-transition>
       </section>
 
       <div class="divider" />
@@ -624,91 +680,104 @@ async function persistIntroOrder() {
       <section class="stack">
         <div class="row sp-between">
           <h2 class="sectionTitle">Texte de introducere site</h2>
-          <span class="pill">{{ introTexts.length }} texte</span>
-        </div>
-
-        <div v-if="!rtdb" class="card">
-          <strong>Eroare</strong>
-          <p class="muted">Realtime Database nu este configurat.</p>
-        </div>
-
-        <template v-else>
-          <div v-if="introTexts.length === 0" class="card">
-            <strong>Nu există texte încă.</strong>
-            <p class="muted">Adaugă primul text și va apărea pe pagina Acasă.</p>
+          <div class="row" style="gap: .25rem;">
+            <span class="pill">{{ introTexts.length }} texte</span>
+            <v-btn
+              :size="actionBtnSize"
+              variant="text"
+              :icon="chevronFor(introSectionOpen)"
+              @click="introSectionOpen = !introSectionOpen"
+            />
           </div>
+        </div>
 
-          <draggable
-            v-model="introTexts"
-            item-key="id"
-            :delay="500"
-            :delay-on-touch-only="true"
-            @end="persistIntroOrder"
-          >
-            <template #item="{ element: t }">
-              <div class="card mb-2">
-                <div v-if="introEditId === String(t.id)" class="stack">
+        <v-expand-transition>
+          <div v-show="introSectionOpen" class="stack">
+            <div v-if="!rtdb" class="card">
+              <strong>Eroare</strong>
+              <p class="muted">Realtime Database nu este configurat.</p>
+            </div>
+
+            <template v-else>
+              <div class="row d-flex justify-end">
+                <v-btn v-if="!introAddOpen" color="cyan" variant="flat" :size="actionBtnSize" @click="startIntroAdd">
+                  Adaugă text nou
+                </v-btn>
+              </div>
+
+              <div class="card" v-if="introAddOpen">
+                <div class="stack">
                   <v-text-field
-                    v-model="introEditValue"
-                    label="Text *"
+                    v-model="introAddValue"
+                    label="Text nou *"
                     variant="outlined"
                     density="compact"
                     hide-details
                     autocomplete="off"
-                    :error="introEditTouched && !introEditTrimmed"
-                    :error-messages="introEditTouched && !introEditTrimmed ? introRequiredError : ''"
-                    @blur="introEditTouched = true"
+                    :error="introAddTouched && !introAddTrimmed"
+                    :error-messages="introAddTouched && !introAddTrimmed ? introRequiredError : ''"
+                    @blur="introAddTouched = true"
                   />
-                  <div class="row d-flex justify-end mt-4">
-                    <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroEdit">Renunță</v-btn>
-                    <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroEdit" @click="saveIntroEdit(t.id)">Salvează</v-btn>
-                  </div>
-                </div>
-
-                <div v-else class="stack">
-                  <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
-                  <div class="row d-flex justify-end mt-4">
-                    <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroEdit(t)">Editează text</v-btn>
-                    <v-btn
-                      :size="actionBtnSize"
-                      variant="outlined"
-                      color="red"
-                      @click="askConfirm({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeIntro(t.id) })"
-                    >
-                      Șterge text
-                    </v-btn>
+                  <div class="row d-flex justify-end">
+                    <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroAdd">Renunță</v-btn>
+                    <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroAdd" @click="saveIntroAdd">Salvează</v-btn>
                   </div>
                 </div>
               </div>
+
+              <div v-if="introTexts.length === 0" class="card">
+                <strong>Nu există texte încă.</strong>
+                <p class="muted">Adaugă primul text și va apărea pe pagina Acasă.</p>
+              </div>
+
+              <draggable
+                v-model="introTexts"
+                item-key="id"
+                :delay="500"
+                :delay-on-touch-only="true"
+                @end="persistIntroOrder"
+              >
+                <template #item="{ element: t }">
+                  <div class="card mb-2">
+                    <div v-if="introEditId === String(t.id)" class="stack">
+                      <v-text-field
+                        v-model="introEditValue"
+                        label="Text *"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        autocomplete="off"
+                        :error="introEditTouched && !introEditTrimmed"
+                        :error-messages="introEditTouched && !introEditTrimmed ? introRequiredError : ''"
+                        @blur="introEditTouched = true"
+                      />
+                      <div class="row d-flex justify-end mt-4">
+                        <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroEdit">Renunță</v-btn>
+                        <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroEdit" @click="saveIntroEdit(t.id)">Salvează</v-btn>
+                      </div>
+                    </div>
+
+                    <div v-else class="stack">
+                      <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
+                      <div class="row d-flex justify-end mt-4">
+                        <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroEdit(t)">Editează text</v-btn>
+                        <v-btn
+                          :size="actionBtnSize"
+                          variant="outlined"
+                          color="red"
+                          @click="askConfirm({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeIntro(t.id) })"
+                        >
+                          Șterge text
+                        </v-btn>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </draggable>
+
             </template>
-          </draggable>
-
-          <div class="card" v-if="introAddOpen">
-            <div class="stack">
-              <v-text-field
-                v-model="introAddValue"
-                label="Text nou *"
-                variant="outlined"
-                density="compact"
-                hide-details
-                autocomplete="off"
-                :error="introAddTouched && !introAddTrimmed"
-                :error-messages="introAddTouched && !introAddTrimmed ? introRequiredError : ''"
-                @blur="introAddTouched = true"
-              />
-              <div class="row d-flex justify-end">
-                <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroAdd">Renunță</v-btn>
-                <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroAdd" @click="saveIntroAdd">Salvează</v-btn>
-              </div>
-            </div>
           </div>
-
-          <div class="row d-flex justify-end">
-            <v-btn v-if="!introAddOpen" color="cyan" variant="flat" :size="actionBtnSize" @click="startIntroAdd">
-              Adaugă text
-            </v-btn>
-          </div>
-        </template>
+        </v-expand-transition>
       </section>
     </div>
 

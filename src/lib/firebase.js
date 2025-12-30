@@ -40,8 +40,9 @@ try {
         authDomain: 'concept-mobila-gradina.firebaseapp.com',
         databaseURL: 'https://concept-mobila-gradina-default-rtdb.europe-west1.firebasedatabase.app',
         projectId: 'concept-mobila-gradina',
-        // NOTE: This must be the bucket name (usually "<project-id>.appspot.com").
-        storageBucket: 'concept-mobila-gradina.appspot.com',
+        // NOTE: This must be the exact bucket shown in Firebase Storage.
+        // Newer Firebase projects commonly use "<project-id>.firebasestorage.app".
+        storageBucket: 'concept-mobila-gradina.firebasestorage.app',
         messagingSenderId: '215351369846',
         appId: '1:215351369846:web:e9454538bd3a5d7326bf57',
         measurementId: 'G-TPNPMB6P9C',
@@ -50,7 +51,8 @@ try {
   app = initializeApp(firebaseConfig)
   db = getFirestore(app)
   auth = getAuth(app)
-  storage = getStorage(app)
+  // Explicitly bind to the configured bucket.
+  storage = getStorage(app, `gs://${firebaseConfig.storageBucket}`)
   rtdb = getDatabase(app)
 
   try {

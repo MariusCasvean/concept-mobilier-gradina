@@ -68,7 +68,7 @@ router.beforeEach((to) => {
 })
 
 router.afterEach((to) => {
-  document.title = `${to.meta.title ? to.meta.title + ' · ' : ''}Concept Mobilier Grădină`
+  document.title = `Concept Mobilier Grădină`
 
   // Ensure we scroll even when content renders async or inside a scroll container.
   nextTick(() => {

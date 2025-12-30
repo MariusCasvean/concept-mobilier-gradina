@@ -16,8 +16,8 @@ export async function logRealtimeData() {
     const products = productsSnap.exists() ? productsSnap.val() : null
     const categories = categoriesSnap.exists() ? categoriesSnap.val() : null
 
-    console.log('[rtdb] products:', products)
-    console.log('[rtdb] categories:', categories)
+    // console.log('[rtdb] products:', products)
+    // console.log('[rtdb] categories:', categories)
   } catch (e) {
     console.error('[rtdb] Failed to fetch data:', e)
   }

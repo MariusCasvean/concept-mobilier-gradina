@@ -34,6 +34,48 @@ Open the dev URL printed in the terminal (typically http://localhost:5173).
 - `src/stores` — Pinia store example
 - `src/assets/main.css` — global styles
 
+## GitHub Pages Deployment
+
+This site is configured to deploy automatically to GitHub Pages with a custom domain.
+
+### Automatic Deployment
+- Pushes to the `main` branch trigger automatic deployment via GitHub Actions
+- The workflow builds the site and deploys it to GitHub Pages
+- The CNAME file in the `public/` directory ensures the custom domain is preserved
+
+### DNS Configuration for Custom Domain
+
+To verify ownership of the custom domain `concept-mobila-gradina.com`, you need to add DNS records with your domain registrar:
+
+1. **Add A records** pointing to GitHub Pages IP addresses:
+   ```
+   185.199.108.153
+   185.199.109.153
+   185.199.110.153
+   185.199.111.153
+   ```
+
+2. **Add a TXT record** for domain verification:
+   - Go to your domain registrar's DNS settings
+   - Add a TXT record with name: `_github-pages-challenge-MariusCasvean`
+   - Value: (obtain from GitHub repository Settings → Pages → Custom domain)
+   - This helps GitHub verify you own the domain
+
+3. **Add CNAME record** (optional, for www subdomain):
+   - Name: `www`
+   - Value: `mariuscasvean.github.io`
+
+### GitHub Pages Setup
+
+In your GitHub repository:
+1. Go to Settings → Pages
+2. Source: Select "GitHub Actions"
+3. Custom domain: Enter `concept-mobila-gradina.com`
+4. Wait for DNS check (can take up to 24 hours)
+5. Enable "Enforce HTTPS" after DNS is verified
+
+**Note**: DNS changes can take up to 24-48 hours to propagate. The TXT record is required for GitHub to verify domain ownership.
+
 ## Notes
 - Images use Unsplash demo URLs; replace with your assets later.
 - This starter avoids TypeScript per request; you can add it later if needed.

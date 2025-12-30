@@ -1,0 +1,740 @@
+<script setup>
+import { computed, onMounted, ref, watch } from 'vue'
+import { useDisplay } from 'vuetify'
+import { rtdb } from '../lib/firebase'
+import { ref as dbRef, update, remove, push, set } from 'firebase/database'
+import { useAdminAuthStore } from '../stores/adminAuth'
+import { listCategories, listProducts } from '../services/productsService'
+import ImageUploadField from '../components/ui/ImageUploadField.vue'
+import PageLoader from '../components/ui/PageLoader.vue'
+
+const adminAuth = useAdminAuthStore()
+
+const loading = ref(true)
+const error = ref('')
+const categories = ref([])
+const products = ref([])
+
+const categoryEditOpen = ref(false)
+const productEditOpen = ref(false)
+const confirmOpen = ref(false)
+
+const confirmTitle = ref('')
+const confirmText = ref('')
+let confirmAction = null
+
+const editingCategory = ref(null)
+const editingProduct = ref(null)
+
+const categoryForm = ref({
+  id: '',
+  title: '',
+  description: '',
+  background: '#0b1220',
+  image: '',
+  productIds: [],
+})
+
+const productForm = ref({
+  id: '',
+  title: '',
+  description: '',
+  price: '',
+  background: '#0b1220',
+  image: '',
+})
+
+const categoryImageFieldRef = ref(null)
+const productImageFieldRef = ref(null)
+
+const productsByCategoryId = computed(() => {
+  const map = new Map()
+  for (const p of products.value) {
+    const cid = String(p.categoryId ?? '')
+    if (!cid) continue
+    if (!map.has(cid)) map.set(cid, [])
+    map.get(cid).push(p)
+  }
+  return map
+})
+
+const productOptions = computed(() => {
+  return products.value.map((p) => ({ title: p.title, value: p.id }))
+})
+
+function getCategoryTitleById(categoryId) {
+  const cid = String(categoryId || '').trim()
+  if (!cid) return '—'
+  return categories.value.find((c) => String(c.id) === cid)?.title || '—'
+}
+
+const display = useDisplay()
+const actionBtnSize = computed(() => (display.xs.value ? 'x-small' : 'small'))
+
+const requiredRule = (v) => (String(v ?? '').trim() ? true : '')
+
+function hasPendingImage(fieldComponent) {
+  if (!fieldComponent) return false
+  const raw = fieldComponent.hasPendingFile
+  if (raw && typeof raw === 'object' && 'value' in raw) return Boolean(raw.value)
+  return Boolean(raw)
+}
+
+const categoryHasImage = computed(() => {
+  const urlOk = Boolean(String(categoryForm.value.image || '').trim())
+  const pendingOk = hasPendingImage(categoryImageFieldRef.value)
+  return urlOk || pendingOk
+})
+
+const productHasImage = computed(() => {
+  const urlOk = Boolean(String(productForm.value.image || '').trim())
+  const pendingOk = hasPendingImage(productImageFieldRef.value)
+  return urlOk || pendingOk
+})
+
+const isCategoryValid = computed(() => {
+  const c = categoryForm.value
+  return (
+    Boolean(String(c.title || '').trim()) &&
+    Boolean(String(c.description || '').trim()) &&
+    categoryHasImage.value
+  )
+})
+
+const isProductValid = computed(() => {
+  const p = productForm.value
+  return (
+    Boolean(String(p.title || '').trim()) &&
+    Boolean(String(p.description || '').trim()) &&
+    Boolean(String(p.price || '').trim()) &&
+    productHasImage.value
+  )
+})
+
+async function refresh() {
+  loading.value = true
+  error.value = ''
+  try {
+    const [cats, prods] = await Promise.all([listCategories(), listProducts()])
+    categories.value = cats
+    products.value = prods
+  } catch (e) {
+    error.value = e?.message || String(e)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(refresh)
+
+watch(categoryEditOpen, (open) => {
+  if (!open) categoryImageFieldRef.value?.clearPendingFile?.()
+})
+
+watch(productEditOpen, (open) => {
+  if (!open) productImageFieldRef.value?.clearPendingFile?.()
+})
+
+function openCategoryEdit(c) {
+  editingCategory.value = c
+  categoryImageFieldRef.value?.clearPendingFile?.()
+  const linked = products.value.filter((p) => String(p.categoryId ?? '') === String(c.id))
+  categoryForm.value = {
+    id: c.id,
+    title: c.title || '',
+    description: c.description || '',
+    background: c.background || '#0b1220',
+    image: c.image || '',
+    productIds: linked.map((p) => p.id),
+  }
+  categoryEditOpen.value = true
+}
+
+function openCategoryCreate() {
+  editingCategory.value = null
+  categoryImageFieldRef.value?.clearPendingFile?.()
+  categoryForm.value = {
+    id: '',
+    title: '',
+    description: '',
+    background: '#0b1220',
+    image: '',
+    productIds: [],
+  }
+  categoryEditOpen.value = true
+}
+
+function openProductEdit(p) {
+  editingProduct.value = p
+  productImageFieldRef.value?.clearPendingFile?.()
+  productForm.value = {
+    id: p.id,
+    title: p.title || '',
+    description: p.description || '',
+    price: p.price || '',
+    background: p.background || '#0b1220',
+    image: p.image || '',
+  }
+  productEditOpen.value = true
+}
+
+function openProductCreate() {
+  editingProduct.value = null
+  productImageFieldRef.value?.clearPendingFile?.()
+  productForm.value = {
+    id: '',
+    title: '',
+    description: '',
+    price: '',
+    background: '#0b1220',
+    image: '',
+  }
+  productEditOpen.value = true
+}
+
+function askConfirm({ title, text, action }) {
+  confirmTitle.value = title
+  confirmText.value = text
+  confirmAction = action
+  confirmOpen.value = true
+}
+
+async function confirmYes() {
+  if (!confirmAction) return
+  confirmOpen.value = false
+  const action = confirmAction
+  confirmAction = null
+  await action()
+}
+
+async function saveCategory() {
+  if (!rtdb) {
+    error.value = 'Realtime Database nu este configurat.'
+    return
+  }
+
+  error.value = ''
+
+  const c = categoryForm.value
+  const title = String(c.title || '').trim()
+  if (!title) {
+    error.value = 'Titlul categoriei este obligatoriu.'
+    return
+  }
+
+  let categoryId = String(c.id || '')
+  const isNew = !categoryId
+  const newRef = isNew ? push(dbRef(rtdb, 'categories')) : null
+  if (isNew) {
+    categoryId = String(newRef?.key || '')
+    if (!categoryId) {
+      error.value = 'Nu am putut genera ID pentru categorie.'
+      return
+    }
+    categoryForm.value.id = categoryId
+  }
+
+  try {
+    const uploadedUrl = await categoryImageFieldRef.value?.uploadSelected?.({ entityId: categoryId, storeAs: 'storage' })
+    if (uploadedUrl) categoryForm.value.image = uploadedUrl
+  } catch (e) {
+    error.value = e?.message || String(e)
+    return
+  }
+
+  const payload = {
+    title,
+    description: String(c.description || '').trim(),
+    background: c.background || '#0b1220',
+    image: c.image || '',
+    updatedAt: Date.now(),
+  }
+
+  if (isNew) {
+    await set(newRef, {
+      ...payload,
+      createdAt: Date.now(),
+    })
+  } else {
+    await update(dbRef(rtdb, `categories/${categoryId}`), payload)
+  }
+
+  // Sync product links (categoryId)
+  const selected = new Set((c.productIds || []).map(String))
+  const currentlyLinked = products.value.filter((p) => String(p.categoryId ?? '') === String(categoryId))
+  const currentlyLinkedIds = new Set(currentlyLinked.map((p) => String(p.id)))
+
+  const toLink = [...selected].filter((id) => !currentlyLinkedIds.has(id))
+  const toUnlink = [...currentlyLinkedIds].filter((id) => !selected.has(id))
+
+  await Promise.all([
+    ...toLink.map((id) => update(dbRef(rtdb, `products/${id}`), { categoryId: String(categoryId), updatedAt: Date.now() })),
+    ...toUnlink.map((id) => update(dbRef(rtdb, `products/${id}`), { categoryId: '', updatedAt: Date.now() })),
+  ])
+
+  categoryEditOpen.value = false
+  await refresh()
+}
+
+async function saveProduct() {
+  if (!rtdb) {
+    error.value = 'Realtime Database nu este configurat.'
+    return
+  }
+
+  error.value = ''
+
+  const p = productForm.value
+  const title = String(p.title || '').trim()
+  if (!title) {
+    error.value = 'Titlul produsului este obligatoriu.'
+    return
+  }
+
+  let productId = String(p.id || '')
+  const isNew = !productId
+  const newRef = isNew ? push(dbRef(rtdb, 'products')) : null
+  if (isNew) {
+    productId = String(newRef?.key || '')
+    if (!productId) {
+      error.value = 'Nu am putut genera ID pentru produs.'
+      return
+    }
+    productForm.value.id = productId
+  }
+
+  try {
+    const uploadedUrl = await productImageFieldRef.value?.uploadSelected?.({ entityId: productId, storeAs: 'storage' })
+    if (uploadedUrl) productForm.value.image = uploadedUrl
+  } catch (e) {
+    error.value = e?.message || String(e)
+    return
+  }
+
+  const payload = {
+    title,
+    description: String(p.description || '').trim(),
+    price: String(p.price || '').trim(),
+    background: p.background || '#0b1220',
+    image: p.image || '',
+    updatedAt: Date.now(),
+  }
+
+  if (isNew) {
+    await set(newRef, {
+      ...payload,
+      categoryId: '',
+      createdAt: Date.now(),
+    })
+  } else {
+    await update(dbRef(rtdb, `products/${productId}`), payload)
+  }
+  productEditOpen.value = false
+  await refresh()
+}
+
+async function deleteCategory(categoryId) {
+  if (!rtdb) return
+
+  // Unlink products first
+  const linked = products.value.filter((p) => String(p.categoryId ?? '') === String(categoryId))
+  await Promise.all(
+    linked.map((p) => update(dbRef(rtdb, `products/${p.id}`), { categoryId: '', updatedAt: Date.now() }))
+  )
+
+  await remove(dbRef(rtdb, `categories/${categoryId}`))
+  await refresh()
+}
+
+async function deleteProduct(productId) {
+  if (!rtdb) return
+  await remove(dbRef(rtdb, `products/${productId}`))
+  await refresh()
+}
+</script>
+
+<template>
+  <div class="stack-lg">
+    <header class="row sp-between">
+      <h1>Administrare</h1>
+      <div v-if="!loading" class="row">
+      </div>
+    </header>
+
+    <PageLoader v-if="loading" />
+
+    <div v-else-if="error" class="card">
+      <strong>Eroare</strong>
+      <p class="muted">{{ error }}</p>
+    </div>
+
+    <div v-else class="stack-lg">
+      <section class="stack">
+        <div class="row sp-between">
+          <h2 class="sectionTitle">Categorii</h2>
+          <span class="pill">{{ categories.length }} {{ categories.length === 1 ? 'categorie' : 'categorii' }}</span>
+        </div>
+        <v-btn color="cyan" variant="flat" class="ok" :size="actionBtnSize" @click="openCategoryCreate">Adaugă categorie nouă</v-btn>
+      </section>
+
+      <div v-for="c in categories" :key="c.id" class="card category" :style="{ borderLeftColor: c.background || 'transparent' }">
+        <div class="row sp-between categoryHead">
+          <div class="stack">
+            <strong>{{ c.title }}</strong>
+            <p v-if="c.description" class="muted">{{ c.description }}</p>
+          </div>
+          <div class="catThumb" aria-hidden="true">
+            <img v-if="c.image" class="catThumbImg" :src="c.image" alt="" />
+            <div v-else class="catThumbEmpty">
+              <v-icon size="56">mdi-cloud-upload</v-icon>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider" />
+
+        <div class="grid">
+          <v-card
+            v-for="p in (productsByCategoryId.get(String(c.id)) || [])"
+            :key="p.id"
+            class="product productInCategory"
+            elevation="2"
+            :style="{ borderLeftColor: p.background || 'transparent' }"
+          >
+            <div class="imgSlot" aria-hidden="true">
+              <v-img v-if="p.image" :src="p.image" height="120" cover alt="" />
+              <div v-else class="imgPlaceholder" />
+            </div>
+            <v-card-text class="info">
+              <div class="row sp-between">
+                <strong class="name">{{ p.title }}</strong>
+                <span v-if="p.price" class="pill">{{ p.price }} RON</span>
+              </div>
+              <p class="muted desc" :class="{ placeholder: !p.description }">{{ p.description || '' }}</p>
+            </v-card-text>
+          </v-card>
+        </div>
+
+        <div v-if="(productsByCategoryId.get(String(c.id)) || []).length === 0" class="muted empty">
+          Nu există produse asociate acestei categorii.
+        </div>
+
+        <div class="row d-flex justify-end mt-4">
+          <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="openCategoryEdit(c)">
+            Editare categorie
+          </v-btn>
+          <v-btn
+            :size="actionBtnSize"
+            variant="outlined"
+            color="red"
+            @click="askConfirm({ title: 'Șterge categoria', text: `Sigur vrei să ștergi categoria ${c.title}?`, action: () => deleteCategory(c.id) })"
+          >
+            Șterge categorie
+          </v-btn>
+        </div>
+      </div>
+
+      <div class="divider sectionDivider" />
+
+      <section v-if="!loading" class="stack">
+        <div class="row sp-between">
+          <h2 class="sectionTitle">Produse</h2>
+          <span class="pill">{{ products.length }} produse</span>
+        </div>
+        <v-btn color="cyan" variant="flat" :size="actionBtnSize" @click="openProductCreate">Adaugă produs</v-btn>
+
+        <div class="productsGrid">
+          <v-card
+            v-for="p in products"
+            :key="p.id"
+            class="productSimple"
+            elevation="2"
+            :style="{ borderLeftColor: p.background || 'transparent' }"
+          >
+            <div class="productSimpleMedia" aria-hidden="true">
+              <v-img v-if="p.image" :src="p.image" height="120" cover alt="" />
+              <div v-else class="imgPlaceholder" />
+            </div>
+
+            <v-card-text class="productSimpleBody">
+              <div class="row sp-between">
+                <strong class="name">{{ p.title }}</strong>
+                <span v-if="p.price" class="pill">{{ p.price }} RON</span>
+              </div>
+              <p class="muted desc" :class="{ placeholder: !p.description }">{{ p.description || '' }}</p>
+              <div class="row sp-between align-center">
+                <span class="muted">Categorie: {{ getCategoryTitleById(p.categoryId) }}</span>
+              </div>
+
+              <div class="row d-flex productActions">
+                <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="openProductEdit(p)">
+                  Editare
+                </v-btn>
+                <v-btn
+                  :size="actionBtnSize"
+                  variant="outlined"
+                  color="red"
+                  @click="askConfirm({ title: 'Șterge produsul', text: `Sigur vrei să ștergi produsul ${p.title}?`, action: () => deleteProduct(p.id) })"
+                >
+                  Șterge
+                </v-btn>
+              </div>
+            </v-card-text>
+          </v-card>
+        </div>
+      </section>
+    </div>
+
+    <!-- Category Edit Dialog -->
+    <v-dialog v-model="categoryEditOpen" max-width="720">
+      <v-card class="card" elevation="2">
+        <v-card-title>{{ editingCategory ? 'Editează categoria' : 'Adaugă categorie nouă' }}</v-card-title>
+        <v-card-text>
+          <v-text-field v-model="categoryForm.title" label="Titlu *" variant="outlined" density="compact" autocomplete="off" :rules="[requiredRule]" />
+          <v-textarea v-model="categoryForm.description" label="Descriere *" variant="outlined" density="compact" rows="3" autocomplete="off" :rules="[requiredRule]" />
+          <v-autocomplete
+            v-model="categoryForm.productIds"
+            :items="productOptions"
+            item-title="title"
+            item-value="value"
+            density="compact"
+            multiple
+            chips
+            label="Produse asociate"
+            variant="outlined"
+            autocomplete="off"
+          />
+          <v-text-field v-model="categoryForm.background" label="Fundal" variant="outlined" density="compact" type="color" autocomplete="off" />
+          <ImageUploadField ref="categoryImageFieldRef" v-model="categoryForm.image" folder="categories" :entity-id="categoryForm.id" store-as="storage" label="Imagine categorie *" />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="categoryEditOpen = false">Renunță</v-btn>
+          <v-btn color="cyan" variant="flat" :disabled="!isCategoryValid" @click="saveCategory">Salvează</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Product Edit Dialog -->
+    <v-dialog v-model="productEditOpen" max-width="720">
+      <v-card class="card" elevation="2">
+        <v-card-title>{{ editingProduct ? 'Editează produsul' : 'Adaugă produs' }}</v-card-title>
+        <v-card-text>
+          <v-text-field v-model="productForm.title" label="Titlu *" variant="outlined" density="compact" autocomplete="off" :rules="[requiredRule]" />
+          <v-textarea v-model="productForm.description" label="Descriere *" variant="outlined" density="compact" rows="3" autocomplete="off" :rules="[requiredRule]" />
+          <v-text-field v-model="productForm.price" label="Preț (RON) *" variant="outlined" density="compact" type="number" autocomplete="off" :rules="[requiredRule]" />
+          <v-text-field v-model="productForm.background" label="Fundal" variant="outlined" density="compact" type="color" autocomplete="off" />
+          <ImageUploadField ref="productImageFieldRef" v-model="productForm.image" folder="products" :entity-id="productForm.id" store-as="storage" label="Imagine produs *" />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="productEditOpen = false">Renunță</v-btn>
+          <v-btn color="cyan" variant="flat" class="ok" :disabled="!isProductValid" @click="saveProduct">Salvează</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Confirmation Dialog -->
+    <v-dialog v-model="confirmOpen" max-width="520">
+      <v-card class="card" elevation="2">
+        <v-card-title>{{ confirmTitle }}</v-card-title>
+        <v-card-text class="muted">{{ confirmText }}</v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="confirmOpen = false">Renunță</v-btn>
+          <v-btn color="red" variant="flat" class="ok" @click="confirmYes">Șterge</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </div>
+</template>
+
+<style scoped>
+.field {
+  width: 100%;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  padding: .7rem .8rem;
+  color: var(--text);
+}
+.color {
+  width: 56px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  background: transparent;
+}
+.category {
+  border: 1px solid rgba(255,255,255,.06);
+  border-left: 14px solid transparent;
+  border-radius: 16px;
+}
+.categoryHead {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .75rem;
+  align-items: flex-start;
+}
+.categoryHead > .stack {
+  min-width: 0;
+}
+.divider {
+  height: 2px;
+  background: rgba(255,255,255,.22);
+  margin: .9rem 0 0;
+}
+.sectionDivider {
+  margin: 1.25rem 0;
+}
+.sectionTitle {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.productsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+.productSimple {
+  border: 1px solid rgba(255,255,255,.06);
+  border-left: 14px solid transparent;
+  border-radius: 16px;
+}
+.productSimpleBody {
+  display: grid;
+  gap: .5rem;
+}
+.productSimpleMedia {
+  height: 120px;
+}
+.productActions {
+  justify-content: flex-end;
+}
+.catThumb {
+  width: min(144px, 38vw);
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.catThumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.catThumbEmpty {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: rgba(255,255,255,.65);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+  margin-top: 1rem;
+}
+.product {
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.06);
+  border-left: 14px solid transparent;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.imgSlot {
+  height: 120px;
+}
+.productInCategory .imgSlot {
+  height: 88px;
+}
+.productInCategory :deep(.v-img) {
+  height: 88px !important;
+}
+.productInCategory .info {
+  padding-top: .6rem;
+  padding-bottom: .6rem;
+}
+.imgPlaceholder {
+  height: 120px;
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+}
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  flex: 1;
+}
+.name {
+  font-size: .98rem;
+  line-height: 1.2;
+}
+.desc {
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  line-height: 1.35;
+  min-height: calc(1.35em * 2);
+}
+.desc.placeholder {
+  visibility: hidden;
+}
+.empty {
+  margin-top: .75rem;
+}
+@media (max-width: 599px) {
+  .category {
+    border-left-width: 10px;
+    border-radius: 14px;
+  }
+  .product {
+    border-left-width: 10px;
+    border-radius: 14px;
+  }
+  .productSimple {
+    border-left-width: 10px;
+    border-radius: 14px;
+  }
+  .catThumb {
+    width: min(120px, 34vw);
+    border-radius: 10px;
+  }
+  .divider {
+    margin-top: .75rem;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+    gap: .5rem;
+    margin-top: .75rem;
+  }
+  .productsGrid {
+    grid-template-columns: 1fr;
+    gap: .5rem;
+  }
+  .info {
+    gap: .3rem;
+  }
+  .name {
+    font-size: .9rem;
+  }
+  .product :deep(.v-img) {
+    height: 96px !important;
+  }
+}
+@media (min-width: 600px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+</style>

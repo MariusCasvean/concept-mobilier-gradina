@@ -1,0 +1,100 @@
+:root {
+  --bg: #0f172a; /* slate-900 */
+  --panel: #111827; /* gray-900 */
+  --muted: #94a3b8; /* slate-400 */
+  --text: #e5e7eb; /* gray-200 */
+  --accent: #22d3ee; /* cyan-400 */
+  --accent-2: #a78bfa; /* violet-400 */
+  --link: #38bdf8; /* sky-400 */
+  --card: #0b1220; /* deep panel */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  /* background: radial-gradient(1200px 700px at 10% -10%, rgba(34, 211, 238, .08), transparent 60%),
+              var(--bg); */
+  color: var(--text);
+  overflow-x: hidden; /* prevent accidental horizontal scroll */
+}
+
+#app {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+.container {
+  max-width: 1200px;
+  width: 100%;
+  margin-inline: auto;
+  /* airy side padding + respect safe areas on mobile */
+  padding-left: max(clamp(12px, 4vw, 24px), env(safe-area-inset-left));
+  padding-right: max(clamp(12px, 4vw, 24px), env(safe-area-inset-right));
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 14px;
+  padding: 1rem;
+  backdrop-filter: blur(6px);
+}
+
+.muted {
+  color: var(--muted);
+}
+.accent {
+  color: var(--accent);
+}
+.accent-2 {
+  color: var(--accent-2);
+}
+
+/* Util */
+.stack {
+  display: grid;
+  gap: 1rem;
+}
+.stack-lg {
+  display: grid;
+  gap: 2rem;
+}
+.row {
+  display: flex;
+  gap: .75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.sp-between {
+  justify-content: space-between;
+}
+.pill {
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  padding: .35rem .7rem;
+  font-size: .8rem;
+}
+
+/* Avoid horizontal overflow from media and long text */
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+:where(h1,h2,h3,h4,h5,h6,p,a,span) {
+  overflow-wrap: anywhere;
+}

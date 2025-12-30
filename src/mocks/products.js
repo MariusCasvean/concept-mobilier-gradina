@@ -1,0 +1,122 @@
+// MOCK DATA: Products used only when Firebase is not configured.
+// Replace with Firestore collection 'products' in production.
+
+export const mockProducts = [
+  {
+    id: 'mock-1',
+    categorySlug: 'seturi-terasa',
+    categoryName: 'Seturi terasă',
+    slug: 'set-terasa-tecno',
+    title: 'Set terasă Tecno',
+    price: '€ 899',
+    image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=1200&auto=format&fit=crop',
+    description: 'Set modern pentru terasă, materiale rezistente la intemperii.',
+    details:
+      'Set complet pentru terasă, ușor de întreținut. Potrivit pentru grădină, balcon sau foișor. Materiale rezistente la UV și umiditate.',
+    createdAt: { seconds: 1 },
+  },
+  {
+    id: 'mock-2',
+    categorySlug: 'scaune',
+    categoryName: 'Scaune',
+    slug: 'scaun-rattan-verde',
+    title: 'Scaun rattan Verde',
+    price: '€ 139',
+    image: 'https://images.unsplash.com/photo-1549187774-b4e9b0445b41?q=80&w=1200&auto=format&fit=crop',
+    description: 'Scaun confortabil din rattan sintetic, ideal pentru grădină.',
+    details:
+      'Scaun stabil, confortabil, ușor de curățat. Recomandat pentru terase, foișoare și zone de relaxare.',
+    createdAt: { seconds: 2 },
+  },
+  {
+    id: 'mock-3',
+    categorySlug: 'mese',
+    categoryName: 'Mese',
+    slug: 'masa-gradina-compact',
+    title: 'Masă grădină Compact',
+    price: '€ 249',
+    image: 'https://images.unsplash.com/photo-1519710884005-6f87b6ba1a55?q=80&w=1200&auto=format&fit=crop',
+    description: 'Masă compactă din aluminiu, finisaj antracit.',
+    details:
+      'Dimensiune practică pentru spații mici. Structură din aluminiu cu finisaj rezistent la zgârieturi.',
+    createdAt: { seconds: 3 },
+  },
+  {
+    id: 'mock-4',
+    categorySlug: 'balansoare',
+    categoryName: 'Balansoare',
+    slug: 'balansoar-luna-3-locuri',
+    title: 'Balansoar Luna 3 locuri',
+    price: '€ 499',
+    image: 'https://images.unsplash.com/photo-1505693314120-0d443867891c?q=80&w=1200&auto=format&fit=crop',
+    description: 'Balansoar stabil cu copertină, perfect pentru relaxare în grădină.',
+    details:
+      'Construcție solidă și șezut confortabil. Copertina ajută la umbrire în zilele însorite. Potrivit pentru 3 persoane.',
+    createdAt: { seconds: 4 },
+  },
+  {
+    id: 'mock-5',
+    categorySlug: 'balansoare',
+    categoryName: 'Balansoare',
+    slug: 'balansoar-zen-2-locuri',
+    title: 'Balansoar Zen 2 locuri',
+    price: '€ 389',
+    image: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=80&w=1200&auto=format&fit=crop',
+    description: 'Design compact, ideal pentru terase. Pernă inclusă.',
+    details:
+      'Balansoar cu amprentă mică, dar foarte confortabil. Pernă inclusă, materiale rezistente la exterior.',
+    createdAt: { seconds: 5 },
+  },
+  {
+    id: 'mock-6',
+    categorySlug: 'sezlonguri',
+    categoryName: 'Șezlonguri',
+    slug: 'sezlong-skyline',
+    title: 'Șezlong Skyline',
+    price: '€ 219',
+    image: 'https://images.unsplash.com/photo-1505693314120-0d443867891c?q=80&w=1200&auto=format&fit=crop',
+    description: 'Șezlong reglabil, ideal pentru piscină sau plajă la tine acasă.',
+    details:
+      'Spătar reglabil, confort sporit, ușor de mutat. Recomandat pentru zone de relaxare în aer liber.',
+    createdAt: { seconds: 6 },
+  },
+  {
+    id: 'mock-7',
+    categorySlug: 'seturi-terasa',
+    categoryName: 'Seturi terasă',
+    slug: 'set-terasa-coral',
+    title: 'Set terasă Coral',
+    price: '€ 1.049',
+    image: 'https://images.unsplash.com/photo-1449247709967-d4461a6a6103?q=80&w=1200&auto=format&fit=crop',
+    description: 'Set premium cu perne groase, confort pentru seri lungi în grădină.',
+    details:
+      'Include canapea și fotolii cu perne groase. Materiale rezistente la exterior, întreținere ușoară.',
+    createdAt: { seconds: 7 },
+  },
+  {
+    id: 'mock-8',
+    categorySlug: 'mese',
+    categoryName: 'Mese',
+    slug: 'masa-extensibila-nova',
+    title: 'Masă extensibilă Nova',
+    price: '€ 699',
+    image: 'https://images.unsplash.com/photo-1549497538-303791108f95?q=80&w=1200&auto=format&fit=crop',
+    description: 'Masă extensibilă pentru 6–10 persoane, perfectă pentru evenimente.',
+    details:
+      'Sistem extensibil rapid. Stabilitate bună și aspect modern, potrivită pentru terasă sau curte.',
+    createdAt: { seconds: 8 },
+  },
+  {
+    id: 'mock-9',
+    categorySlug: 'scaune',
+    categoryName: 'Scaune',
+    slug: 'scaun-aluminiu-aero',
+    title: 'Scaun aluminiu Aero',
+    price: '€ 99',
+    image: 'https://images.unsplash.com/photo-1544457070-4cd773b4d71e?q=80&w=1200&auto=format&fit=crop',
+    description: 'Scaun ușor, rezistent, potrivit pentru utilizare zilnică.',
+    details:
+      'Structură din aluminiu, ușor de manevrat. Potrivit pentru spații rezidențiale și HoReCa.',
+    createdAt: { seconds: 9 },
+  },
+]

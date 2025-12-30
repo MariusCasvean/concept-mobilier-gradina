@@ -51,7 +51,7 @@ a:hover {
   border: 1px solid rgba(255,255,255,.06);
   border-radius: 14px;
   padding: 1rem;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(2px);
 }
 
 .muted {

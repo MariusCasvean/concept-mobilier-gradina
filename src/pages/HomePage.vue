@@ -94,7 +94,7 @@ onMounted(async () => {
 @media (max-width: 599px) {
   .homeBg {
     background-attachment: scroll;
-    background-position: center top;
+    background-position: 75% center;
   }
 }
 @media (min-width: 768px) {

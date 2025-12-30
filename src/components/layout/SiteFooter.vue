@@ -25,6 +25,11 @@ const footerLines = computed(() => {
   return fromDb.length ? fromDb : footerFallbackLines
 })
 
+// WhatsApp expects E.164 format (country code + number, no leading 0).
+// 0759 323 577 -> +40 759 323 577 -> 40759323577
+const whatsappPhoneE164 = '40759323577'
+const whatsappHref = computed(() => `https://wa.me/${whatsappPhoneE164}`)
+
 let unsubscribeFooter = null
 
 onMounted(() => {
@@ -94,6 +99,14 @@ function confirmAdmin() {
               aria-label="Facebook"
             >
               <img class="social-icon" width="30" height="30" src="../../assets/images/facebook.jpg" alt="Facebook" />
+            </a>
+            <a
+              :href="whatsappHref"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Whatsapp"
+            >
+              <img class="social-icon" width="30" height="30" src="../../assets/images/whatsapp.png" alt="Whatsapp" />
             </a>
           </div>
         </div>

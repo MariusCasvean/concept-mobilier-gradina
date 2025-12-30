@@ -72,6 +72,8 @@ function normalizeStringList(val) {
 }
 
 function normalizeMessages(val) {
+  const isDeleted = (v) => v === true || v === 1 || String(v ?? '').toLowerCase() === 'true' || String(v ?? '') === '1'
+
   const items = normalizeList(val)
     .map((m) => ({
       ...m,
@@ -82,7 +84,9 @@ function normalizeMessages(val) {
       phone: typeof m.phone === 'string' ? m.phone : '',
       email: typeof m.email === 'string' ? m.email : '',
       createdAt: m.createdAt,
+      deleted: m.deleted,
     }))
+    .filter((m) => !isDeleted(m.deleted))
 
   return items.sort((a, b) => {
     const ta = Number(a?.createdAt)
@@ -172,7 +176,7 @@ export async function deleteMessage(id) {
   if (!rtdb) throw new Error('Realtime Database nu este configurat.')
   const cleanId = String(id ?? '').trim()
   if (!cleanId) throw new Error('ID invalid.')
-  await remove(dbRef(rtdb, `messages/${cleanId}`))
+  await update(dbRef(rtdb, `messages/${cleanId}`), { deleted: true })
 }
 
 export async function addIntroText(text) {

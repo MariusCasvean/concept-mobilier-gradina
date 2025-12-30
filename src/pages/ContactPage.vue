@@ -14,14 +14,39 @@ const sending = ref(false)
 const error = ref('')
 const sent = ref(false)
 
+const touched = reactive({
+  name: false,
+  phone: false,
+  email: false,
+  message: false,
+})
+
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim())
+
+function resetTouched() {
+  touched.name = false
+  touched.phone = false
+  touched.email = false
+  touched.message = false
+}
+
+const requiredIfTouched = (key) => (v) => {
+  if (!touched[key]) return true
+  return String(v ?? '').trim() ? true : ''
+}
+
+const emailIfTouched = (v) => {
+  if (!touched.email) return true
+  const s = String(v ?? '').trim()
+  if (!s) return true
+  return isValidEmail(s) ? true : 'E-mail invalid.'
+}
 
 const canSend = computed(() => {
   return (
     String(contact.name).trim().length > 0 &&
     String(contact.phone).trim().length > 0 &&
-    String(contact.message).trim().length > 0 &&
-    isValidEmail(contact.email)
+    String(contact.message).trim().length > 0
   )
 })
 
@@ -50,6 +75,7 @@ async function send() {
       email: String(contact.email).trim(),
       subject: String(contact.subject).trim(),
       message: String(contact.message).trim(),
+      deleted: false,
       createdAt: Date.now(),
     }
 
@@ -69,6 +95,7 @@ async function send() {
     contact.email = ''
     contact.subject = ''
     contact.message = ''
+    resetTouched()
     sent.value = true
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (e) {
@@ -98,23 +125,60 @@ async function send() {
     <div class="grid">
       <form class="card" @submit.prevent="send">
         <div class="row">
-          <v-text-field v-model="contact.name" variant="outlined" label="Nume" autocomplete="off" required />
+          <v-text-field
+            v-model="contact.name"
+            variant="outlined"
+            density="compact"
+            label="Nume *"
+            autocomplete="off"
+            required
+            :rules="[requiredIfTouched('name')]"
+            @blur="touched.name = true"
+          />
         </div>
         <div class="row">
-          <v-text-field v-model="contact.phone" variant="outlined" label="Telefon" autocomplete="off" required />
+          <v-text-field
+            v-model="contact.phone"
+            variant="outlined"
+            density="compact"
+            label="Telefon *"
+            autocomplete="off"
+            required
+            :rules="[requiredIfTouched('phone')]"
+            @blur="touched.phone = true"
+          />
         </div>
         <div class="row">
-          <v-text-field v-model="contact.email" type="email" variant="outlined" label="E-mail" autocomplete="off" />
+          <v-text-field
+            v-model="contact.email"
+            type="email"
+            variant="outlined"
+            density="compact"
+            label="E-mail"
+            autocomplete="off"
+            :rules="[emailIfTouched]"
+            @blur="touched.email = true"
+          />
         </div>
         <div class="row">
-          <v-text-field v-model="contact.subject" variant="outlined" label="Subiect" autocomplete="off" />
+          <v-text-field v-model="contact.subject" variant="outlined" density="compact" label="Subiect" autocomplete="off" />
         </div>
         <div class="row">
-          <v-textarea v-model="contact.message" variant="outlined" label="Mesaj" rows="6" autocomplete="off" required />
+          <v-textarea
+            v-model="contact.message"
+            variant="outlined"
+            density="compact"
+            label="Mesaj *"
+            rows="6"
+            autocomplete="off"
+            required
+            :rules="[requiredIfTouched('message')]"
+            @blur="touched.message = true"
+          />
         </div>
-        <button class="btn" type="submit" :disabled="!canSend || sending">
+        <v-btn class="btn" type="submit" :disabled="!canSend || sending">
           {{ sending ? 'Se trimite…' : 'Trimite' }}
-        </button>
+        </v-btn>
       </form>
       <div class="card">
         <div class="info-section">
@@ -157,12 +221,12 @@ async function send() {
 .btn {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: #0b1220;
-  border: none;
   padding: .6rem .9rem;
-  border-radius: 10px;
-  font-weight: 700;
+  border-radius: 6px;
   cursor: pointer;
-  width: max-content;
+}
+.btn:hover {
+  filter: brightness(1.05);
 }
 .btn:disabled {
   opacity: .5;

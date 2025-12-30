@@ -33,6 +33,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Ensure CNAME in dist
+        run: |
+          if [ -f CNAME ]; then
+            cp CNAME dist/CNAME
+          fi
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

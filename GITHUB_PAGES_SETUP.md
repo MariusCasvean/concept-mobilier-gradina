@@ -71,6 +71,8 @@ If you want `www.concept-mobila-gradina.com` to work:
 |-------|------|---------------------------------|
 | CNAME | www  | mariuscasvean.github.io        |
 
+**Note**: According to GitHub Pages best practices, the www subdomain should point to your GitHub Pages domain (`<username>.github.io`), not to the apex domain. This ensures proper routing through GitHub's infrastructure.
+
 ### 4. Wait for DNS Propagation
 
 DNS changes can take anywhere from a few minutes to 48 hours to propagate globally. Typically it's much faster (15 minutes to a few hours).

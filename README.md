@@ -64,6 +64,7 @@ To verify ownership of the custom domain `concept-mobila-gradina.com`, you need 
 3. **Add CNAME record** (optional, for www subdomain):
    - Name: `www`
    - Value: `mariuscasvean.github.io`
+   - This redirects www.concept-mobila-gradina.com to your site
 
 ### GitHub Pages Setup
 

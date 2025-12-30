@@ -1,10 +1,11 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
+import draggable from 'vuedraggable'
 import { rtdb } from '../lib/firebase'
 import { ref as dbRef, update, remove, push, set } from 'firebase/database'
 import { useAdminAuthStore } from '../stores/adminAuth'
-import { addIntroText, deleteIntroText, listCategories, listIntroTexts, listProducts, updateIntroText } from '../services/productsService'
+import { addIntroText, deleteIntroText, listCategories, listIntroTexts, listProducts, saveIntroRanks, updateIntroText } from '../services/productsService'
 import ImageUploadField from '../components/ui/ImageUploadField.vue'
 import PageLoader from '../components/ui/PageLoader.vue'
 
@@ -20,6 +21,16 @@ const introAddOpen = ref(false)
 const introAddValue = ref('')
 const introEditId = ref('')
 const introEditValue = ref('')
+const introAddTouched = ref(false)
+const introEditTouched = ref(false)
+
+const introAddTrimmed = computed(() => String(introAddValue.value ?? '').trim())
+const introEditTrimmed = computed(() => String(introEditValue.value ?? '').trim())
+
+const canSaveIntroAdd = computed(() => Boolean(introAddTrimmed.value))
+const canSaveIntroEdit = computed(() => Boolean(introEditId.value) && Boolean(introEditTrimmed.value))
+
+const introRequiredError = 'Câmp obligatoriu.'
 
 const categoryEditOpen = ref(false)
 const productEditOpen = ref(false)
@@ -141,6 +152,8 @@ async function refresh() {
     introAddValue.value = ''
     introEditId.value = ''
     introEditValue.value = ''
+    introAddTouched.value = false
+    introEditTouched.value = false
   } catch (e) {
     error.value = e?.message || String(e)
   } finally {
@@ -286,18 +299,22 @@ async function saveCategory() {
     await update(dbRef(rtdb, `categories/${categoryId}`), payload)
   }
 
-  // Sync product links (categoryId)
-  const selected = new Set((c.productIds || []).map(String))
-  const currentlyLinked = products.value.filter((p) => String(p.categoryId ?? '') === String(categoryId))
-  const currentlyLinkedIds = new Set(currentlyLinked.map((p) => String(p.id)))
+  const selectedProductIds = new Set((c.productIds || []).map((id) => String(id)))
+  const linkOps = []
+  for (const p of products.value) {
+    const pid = String(p?.id ?? '')
+    if (!pid) continue
+    const currentCategoryId = String(p?.categoryId ?? '')
 
-  const toLink = [...selected].filter((id) => !currentlyLinkedIds.has(id))
-  const toUnlink = [...currentlyLinkedIds].filter((id) => !selected.has(id))
+    if (selectedProductIds.has(pid) && currentCategoryId !== String(categoryId)) {
+      linkOps.push(update(dbRef(rtdb, `products/${pid}`), { categoryId: String(categoryId), updatedAt: Date.now() }))
+    }
 
-  await Promise.all([
-    ...toLink.map((id) => update(dbRef(rtdb, `products/${id}`), { categoryId: String(categoryId), updatedAt: Date.now() })),
-    ...toUnlink.map((id) => update(dbRef(rtdb, `products/${id}`), { categoryId: '', updatedAt: Date.now() })),
-  ])
+    if (!selectedProductIds.has(pid) && currentCategoryId === String(categoryId)) {
+      linkOps.push(update(dbRef(rtdb, `products/${pid}`), { categoryId: '', updatedAt: Date.now() }))
+    }
+  }
+  await Promise.all(linkOps)
 
   categoryEditOpen.value = false
   await refresh()
@@ -358,6 +375,7 @@ async function saveProduct() {
   } else {
     await update(dbRef(rtdb, `products/${productId}`), payload)
   }
+
   productEditOpen.value = false
   await refresh()
 }
@@ -386,17 +404,22 @@ function startIntroAdd() {
   introAddValue.value = ''
   introEditId.value = ''
   introEditValue.value = ''
+  introAddTouched.value = false
+  introEditTouched.value = false
 }
 
 function cancelIntroAdd() {
   introAddOpen.value = false
   introAddValue.value = ''
+  introAddTouched.value = false
 }
 
 async function saveIntroAdd() {
   error.value = ''
   try {
-    await addIntroText(introAddValue.value)
+    introAddTouched.value = true
+    if (!canSaveIntroAdd.value) return
+    await addIntroText(introAddTrimmed.value)
     await refresh()
   } catch (e) {
     error.value = e?.message || String(e)
@@ -408,17 +431,22 @@ function startIntroEdit(item) {
   introEditValue.value = String(item?.text || '')
   introAddOpen.value = false
   introAddValue.value = ''
+  introEditTouched.value = false
 }
 
 function cancelIntroEdit() {
   introEditId.value = ''
   introEditValue.value = ''
+  introEditTouched.value = false
 }
 
 async function saveIntroEdit(itemId) {
   error.value = ''
   try {
-    await updateIntroText(itemId, introEditValue.value)
+    introEditTouched.value = true
+    if (!canSaveIntroEdit.value) return
+    const current = introTexts.value.find((x) => String(x?.id) === String(itemId))
+    await updateIntroText(itemId, introEditTrimmed.value, current?.rank)
     await refresh()
   } catch (e) {
     error.value = e?.message || String(e)
@@ -430,6 +458,28 @@ async function removeIntro(itemId) {
   try {
     await deleteIntroText(itemId)
     await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+}
+
+async function persistIntroOrder() {
+  if (!rtdb) return
+  error.value = ''
+
+  // Reset edit/add states to avoid editing the wrong item after a reorder.
+  introEditId.value = ''
+  introEditValue.value = ''
+  introEditTouched.value = false
+  introAddOpen.value = false
+  introAddValue.value = ''
+  introAddTouched.value = false
+
+  // Ensure local ranks reflect the new order immediately.
+  introTexts.value = introTexts.value.map((t, idx) => ({ ...t, rank: idx }))
+
+  try {
+    await saveIntroRanks(introTexts.value)
   } catch (e) {
     error.value = e?.message || String(e)
   }
@@ -523,7 +573,7 @@ async function removeIntro(itemId) {
           <h2 class="sectionTitle">Produse</h2>
           <span class="pill">{{ products.length }} produse</span>
         </div>
-        <v-btn color="cyan" variant="flat" :size="actionBtnSize" @click="openProductCreate">Adaugă produs</v-btn>
+        <v-btn color="cyan" variant="flat" :size="actionBtnSize" @click="openProductCreate">Adaugă produs nou</v-btn>
 
         <div class="productsGrid">
           <v-card
@@ -588,50 +638,67 @@ async function removeIntro(itemId) {
             <p class="muted">Adaugă primul text și va apărea pe pagina Acasă.</p>
           </div>
 
-          <div v-for="t in introTexts" :key="t.id" class="card">
-            <div v-if="introEditId === String(t.id)" class="stack">
-              <v-text-field
-                v-model="introEditValue"
-                label="Text"
-                variant="outlined"
-                density="compact"
-                hide-details
-                autocomplete="off"
-              />
-              <div class="row d-flex justify-end mt-4">
-                <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroEdit">Renunță</v-btn>
-                <v-btn :size="actionBtnSize" color="cyan" variant="flat" @click="saveIntroEdit(t.id)">Salvează</v-btn>
+          <draggable
+            v-model="introTexts"
+            item-key="id"
+            :delay="500"
+            :delay-on-touch-only="true"
+            @end="persistIntroOrder"
+          >
+            <template #item="{ element: t }">
+              <div class="card mb-2">
+                <div v-if="introEditId === String(t.id)" class="stack">
+                  <v-text-field
+                    v-model="introEditValue"
+                    label="Text *"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    autocomplete="off"
+                    :error="introEditTouched && !introEditTrimmed"
+                    :error-messages="introEditTouched && !introEditTrimmed ? introRequiredError : ''"
+                    @blur="introEditTouched = true"
+                  />
+                  <div class="row d-flex justify-end mt-4">
+                    <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroEdit">Renunță</v-btn>
+                    <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroEdit" @click="saveIntroEdit(t.id)">Salvează</v-btn>
+                  </div>
+                </div>
+
+                <div v-else class="stack">
+                  <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
+                  <div class="row d-flex justify-end mt-4">
+                    <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroEdit(t)">Editează text</v-btn>
+                    <v-btn
+                      :size="actionBtnSize"
+                      variant="outlined"
+                      color="red"
+                      @click="askConfirm({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeIntro(t.id) })"
+                    >
+                      Șterge text
+                    </v-btn>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div v-else class="stack">
-              <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
-              <div class="row d-flex justify-end mt-4">
-                <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroEdit(t)">Editează text</v-btn>
-                <v-btn
-                  :size="actionBtnSize"
-                  variant="outlined"
-                  color="red"
-                  @click="askConfirm({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeIntro(t.id) })"
-                >
-                  Șterge text
-                </v-btn>
-              </div>
-            </div>
-          </div>
+            </template>
+          </draggable>
 
           <div class="card" v-if="introAddOpen">
             <div class="stack">
               <v-text-field
                 v-model="introAddValue"
-                label="Text nou"
+                label="Text nou *"
                 variant="outlined"
                 density="compact"
                 hide-details
                 autocomplete="off"
+                :error="introAddTouched && !introAddTrimmed"
+                :error-messages="introAddTouched && !introAddTrimmed ? introRequiredError : ''"
+                @blur="introAddTouched = true"
               />
               <div class="row d-flex justify-end">
                 <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroAdd">Renunță</v-btn>
-                <v-btn :size="actionBtnSize" color="cyan" variant="flat" @click="saveIntroAdd">Salvează</v-btn>
+                <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroAdd" @click="saveIntroAdd">Salvează</v-btn>
               </div>
             </div>
           </div>

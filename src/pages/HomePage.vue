@@ -26,7 +26,7 @@ const fallbackIntro = [
 const introLines = computed(() => {
   if (!rtdb) return fallbackIntro
   const lines = introTexts.value.map((x) => String(x?.text || '').trim()).filter(Boolean)
-  return lines
+  return lines.length ? lines : fallbackIntro
 })
 
 const featuredProducts = computed(() => products.value.slice(0, 6))

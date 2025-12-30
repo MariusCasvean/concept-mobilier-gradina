@@ -97,7 +97,7 @@ watch(categorySlug, load)
         density="compact"
         hide-details
         clearable
-        prepend-inner-icon="mdi-magnify"
+        append-inner-icon="mdi-magnify"
         label="Caută produs"
         autocomplete="off"
       />

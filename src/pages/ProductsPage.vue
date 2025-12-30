@@ -77,7 +77,7 @@ const filteredCategories = computed(() => {
         density="compact"
         hide-details
         clearable
-        prepend-inner-icon="mdi-magnify"
+        append-inner-icon="mdi-magnify"
         label="Caută categorie"
         autocomplete="off"
       />

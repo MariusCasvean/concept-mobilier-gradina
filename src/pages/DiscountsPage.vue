@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useDisplay } from 'vuetify'
 import ProductCard from '../components/ui/ProductCard.vue'
 import PageLoader from '../components/ui/PageLoader.vue'
 import { rtdb } from '../lib/firebase'
@@ -16,6 +17,9 @@ const products = ref([])
 
 const detailsOpen = ref(false)
 const selectedProduct = ref(null)
+
+const display = useDisplay()
+const detailsBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
 
 const categorySlugById = computed(() => {
   const map = new Map()
@@ -147,7 +151,7 @@ onMounted(async () => {
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn color="cyan" variant="flat" @click="closeDetails">OK</v-btn>
+          <v-btn color="cyan" variant="flat" :size="detailsBtnSize" @click="closeDetails">OK</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

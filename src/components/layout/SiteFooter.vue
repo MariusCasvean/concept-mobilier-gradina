@@ -1,7 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAdminAuthStore } from '../../stores/adminAuth'
+import { subscribeFooterTexts } from '../../services/productsService'
 
 const router = useRouter()
 const adminAuth = useAdminAuthStore()
@@ -9,6 +10,38 @@ const adminAuth = useAdminAuthStore()
 const adminDialog = ref(false)
 const adminPassword = ref('')
 const showPassword = ref(false)
+
+const footerTexts = ref([])
+
+const footerFallbackLines = [
+  'Design modern sau rustic pentru spații exterioare.',
+  'Calitate, confort și stil.',
+]
+
+const footerLines = computed(() => {
+  const fromDb = (footerTexts.value || [])
+    .map((x) => String(x?.text ?? '').trim())
+    .filter(Boolean)
+  return fromDb.length ? fromDb : footerFallbackLines
+})
+
+let unsubscribeFooter = null
+
+onMounted(() => {
+  unsubscribeFooter = subscribeFooterTexts(
+    (items) => {
+      footerTexts.value = items
+    },
+    () => {
+      footerTexts.value = []
+    }
+  )
+})
+
+onBeforeUnmount(() => {
+  unsubscribeFooter?.()
+  unsubscribeFooter = null
+})
 
 function openAdminDialog() {
   adminAuth.syncFromStorage()
@@ -48,8 +81,7 @@ function confirmAdmin() {
             <div class="logo">CMG</div>
             <strong>Concept Mobilier Grădină</strong>
           </div>
-          <p class="muted">Design modern sau rustic pentru spații exterioare.</p>
-          <p class="muted">Calitate, confort și stil.</p>
+          <p v-for="(line, idx) in footerLines" :key="idx" class="muted">{{ line }}</p>
         </div>
 
         <div>

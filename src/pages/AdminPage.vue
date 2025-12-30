@@ -5,7 +5,20 @@ import draggable from 'vuedraggable'
 import { rtdb } from '../lib/firebase'
 import { ref as dbRef, update, remove, push, set } from 'firebase/database'
 import { useAdminAuthStore } from '../stores/adminAuth'
-import { addIntroText, deleteIntroText, listCategories, listIntroTexts, listProducts, saveIntroRanks, updateIntroText } from '../services/productsService'
+import {
+  addFooterText,
+  addIntroText,
+  deleteFooterText,
+  deleteIntroText,
+  listCategories,
+  listFooterTexts,
+  listIntroTexts,
+  listProducts,
+  saveFooterRanks,
+  saveIntroRanks,
+  updateFooterText,
+  updateIntroText,
+} from '../services/productsService'
 import ImageUploadField from '../components/ui/ImageUploadField.vue'
 import PageLoader from '../components/ui/PageLoader.vue'
 
@@ -24,17 +37,32 @@ const introEditValue = ref('')
 const introAddTouched = ref(false)
 const introEditTouched = ref(false)
 
+const footerTexts = ref([])
+const footerAddOpen = ref(false)
+const footerAddValue = ref('')
+const footerEditId = ref('')
+const footerEditValue = ref('')
+const footerAddTouched = ref(false)
+const footerEditTouched = ref(false)
+
 const categoriesSectionOpen = ref(false)
 const productsSectionOpen = ref(false)
 const introSectionOpen = ref(false)
+const footerSectionOpen = ref(false)
 
 const chevronFor = (open) => (open ? 'mdi-chevron-up' : 'mdi-chevron-down')
 
 const introAddTrimmed = computed(() => String(introAddValue.value ?? '').trim())
 const introEditTrimmed = computed(() => String(introEditValue.value ?? '').trim())
 
+const footerAddTrimmed = computed(() => String(footerAddValue.value ?? '').trim())
+const footerEditTrimmed = computed(() => String(footerEditValue.value ?? '').trim())
+
 const canSaveIntroAdd = computed(() => Boolean(introAddTrimmed.value))
 const canSaveIntroEdit = computed(() => Boolean(introEditId.value) && Boolean(introEditTrimmed.value))
+
+const canSaveFooterAdd = computed(() => Boolean(footerAddTrimmed.value))
+const canSaveFooterEdit = computed(() => Boolean(footerEditId.value) && Boolean(footerEditTrimmed.value))
 
 const introRequiredError = 'Câmp obligatoriu.'
 
@@ -151,16 +179,24 @@ async function refresh() {
   loading.value = true
   error.value = ''
   try {
-    const [cats, prods, intro] = await Promise.all([listCategories(), listProducts(), listIntroTexts()])
+    const [cats, prods, intro, footer] = await Promise.all([listCategories(), listProducts(), listIntroTexts(), listFooterTexts()])
     categories.value = cats
     products.value = prods
     introTexts.value = intro
+    footerTexts.value = footer
     introAddOpen.value = false
     introAddValue.value = ''
     introEditId.value = ''
     introEditValue.value = ''
     introAddTouched.value = false
     introEditTouched.value = false
+
+    footerAddOpen.value = false
+    footerAddValue.value = ''
+    footerEditId.value = ''
+    footerEditValue.value = ''
+    footerAddTouched.value = false
+    footerEditTouched.value = false
   } catch (e) {
     error.value = e?.message || String(e)
   } finally {
@@ -491,6 +527,90 @@ async function persistIntroOrder() {
     error.value = e?.message || String(e)
   }
 }
+
+function startFooterAdd() {
+  footerAddOpen.value = true
+  footerAddValue.value = ''
+  footerEditId.value = ''
+  footerEditValue.value = ''
+  footerAddTouched.value = false
+  footerEditTouched.value = false
+}
+
+function cancelFooterAdd() {
+  footerAddOpen.value = false
+  footerAddValue.value = ''
+  footerAddTouched.value = false
+}
+
+async function saveFooterAdd() {
+  error.value = ''
+  try {
+    footerAddTouched.value = true
+    if (!canSaveFooterAdd.value) return
+    await addFooterText(footerAddTrimmed.value)
+    await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+}
+
+function startFooterEdit(item) {
+  footerEditId.value = String(item?.id || '')
+  footerEditValue.value = String(item?.text || '')
+  footerAddOpen.value = false
+  footerAddValue.value = ''
+  footerEditTouched.value = false
+}
+
+function cancelFooterEdit() {
+  footerEditId.value = ''
+  footerEditValue.value = ''
+  footerEditTouched.value = false
+}
+
+async function saveFooterEdit(itemId) {
+  error.value = ''
+  try {
+    footerEditTouched.value = true
+    if (!canSaveFooterEdit.value) return
+    const current = footerTexts.value.find((x) => String(x?.id) === String(itemId))
+    await updateFooterText(itemId, footerEditTrimmed.value, current?.rank)
+    await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+}
+
+async function removeFooter(itemId) {
+  error.value = ''
+  try {
+    await deleteFooterText(itemId)
+    await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+}
+
+async function persistFooterOrder() {
+  if (!rtdb) return
+  error.value = ''
+
+  footerEditId.value = ''
+  footerEditValue.value = ''
+  footerEditTouched.value = false
+  footerAddOpen.value = false
+  footerAddValue.value = ''
+  footerAddTouched.value = false
+
+  footerTexts.value = footerTexts.value.map((t, idx) => ({ ...t, rank: idx }))
+
+  try {
+    await saveFooterRanks(footerTexts.value)
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+}
 </script>
 
 <template>
@@ -733,7 +853,7 @@ async function persistIntroOrder() {
               <draggable
                 v-model="introTexts"
                 item-key="id"
-                :delay="500"
+                :delay="300"
                 :delay-on-touch-only="true"
                 @end="persistIntroOrder"
               >
@@ -775,6 +895,110 @@ async function persistIntroOrder() {
                 </template>
               </draggable>
 
+            </template>
+          </div>
+        </v-expand-transition>
+      </section>
+
+      <div class="divider" />
+
+      <section class="stack">
+        <div class="row sp-between">
+          <h2 class="sectionTitle">Texte footer</h2>
+          <div class="row" style="gap: .25rem;">
+            <span class="pill">{{ footerTexts.length }} texte</span>
+            <v-btn
+              :size="actionBtnSize"
+              variant="text"
+              :icon="chevronFor(footerSectionOpen)"
+              @click="footerSectionOpen = !footerSectionOpen"
+            />
+          </div>
+        </div>
+
+        <v-expand-transition>
+          <div v-show="footerSectionOpen" class="stack">
+            <div v-if="!rtdb" class="card">
+              <strong>Eroare</strong>
+              <p class="muted">Realtime Database nu este configurat.</p>
+            </div>
+
+            <template v-else>
+              <div class="row d-flex justify-end">
+                <v-btn v-if="!footerAddOpen" color="cyan" variant="flat" :size="actionBtnSize" @click="startFooterAdd">
+                  Adaugă text nou
+                </v-btn>
+              </div>
+
+              <div class="card" v-if="footerAddOpen">
+                <div class="stack">
+                  <v-text-field
+                    v-model="footerAddValue"
+                    label="Text nou *"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    autocomplete="off"
+                    :error="footerAddTouched && !footerAddTrimmed"
+                    :error-messages="footerAddTouched && !footerAddTrimmed ? introRequiredError : ''"
+                    @blur="footerAddTouched = true"
+                  />
+                  <div class="row d-flex justify-end">
+                    <v-btn :size="actionBtnSize" variant="text" @click="cancelFooterAdd">Renunță</v-btn>
+                    <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveFooterAdd" @click="saveFooterAdd">Salvează</v-btn>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="footerTexts.length === 0" class="card">
+                <strong>Nu există texte încă.</strong>
+                <p class="muted">Adaugă primul text și va apărea în footer.</p>
+              </div>
+
+              <draggable
+                v-model="footerTexts"
+                item-key="id"
+                :delay="300"
+                :delay-on-touch-only="true"
+                @end="persistFooterOrder"
+              >
+                <template #item="{ element: t }">
+                  <div class="card mb-2">
+                    <div v-if="footerEditId === String(t.id)" class="stack">
+                      <v-text-field
+                        v-model="footerEditValue"
+                        label="Text *"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        autocomplete="off"
+                        :error="footerEditTouched && !footerEditTrimmed"
+                        :error-messages="footerEditTouched && !footerEditTrimmed ? introRequiredError : ''"
+                        @blur="footerEditTouched = true"
+                      />
+                      <div class="row d-flex justify-end mt-4">
+                        <v-btn :size="actionBtnSize" variant="text" @click="cancelFooterEdit">Renunță</v-btn>
+                        <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveFooterEdit" @click="saveFooterEdit(t.id)">Salvează</v-btn>
+                      </div>
+                    </div>
+
+                    <div v-else class="stack">
+                      <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
+                      <div class="row d-flex justify-end mt-4">
+                        <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startFooterEdit(t)">Editează text</v-btn>
+                        <v-btn
+                          :size="actionBtnSize"
+                          variant="outlined"
+                          color="red"
+                          @click="askConfirm({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeFooter(t.id) })"
+                        >
+                          Șterge text
+                        </v-btn>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </draggable>
             </template>
           </div>
         </v-expand-transition>

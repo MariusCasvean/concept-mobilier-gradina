@@ -3,7 +3,7 @@
 // Falls back to local mocks if RTDB isn't available.
 
 import { rtdb } from '../lib/firebase'
-import { get, ref as dbRef, query, orderByChild, equalTo, push, set, remove, update } from 'firebase/database'
+import { get, ref as dbRef, query, orderByChild, equalTo, push, set, remove, update, onValue } from 'firebase/database'
 import { mockProducts } from '../mocks/products'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -81,6 +81,38 @@ export async function listIntroTexts() {
   return normalizeStringList(snap.exists() ? snap.val() : null)
 }
 
+export async function listFooterTexts() {
+  if (!rtdb) {
+    await sleep(40)
+    return []
+  }
+
+  const snap = await get(dbRef(rtdb, 'footer'))
+  return normalizeStringList(snap.exists() ? snap.val() : null)
+}
+
+export function subscribeFooterTexts(onItems, onError) {
+  const emit = typeof onItems === 'function' ? onItems : () => {}
+  const emitError = typeof onError === 'function' ? onError : () => {}
+
+  if (!rtdb) {
+    emit([])
+    return () => {}
+  }
+
+  const unsub = onValue(
+    dbRef(rtdb, 'footer'),
+    (snap) => {
+      emit(normalizeStringList(snap.exists() ? snap.val() : null))
+    },
+    (err) => {
+      emitError(err)
+    }
+  )
+
+  return typeof unsub === 'function' ? unsub : () => {}
+}
+
 export async function addIntroText(text) {
   if (!rtdb) throw new Error('Realtime Database nu este configurat.')
   const clean = String(text ?? '').trim()
@@ -95,6 +127,27 @@ export async function addIntroText(text) {
   const rank = maxRank + 1
 
   const nodeRef = push(dbRef(rtdb, 'intro'))
+  const id = String(nodeRef.key || '')
+  if (!id) throw new Error('Nu am putut genera ID pentru text.')
+
+  await set(nodeRef, { text: clean, rank })
+  return { id, text: clean, rank }
+}
+
+export async function addFooterText(text) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const clean = String(text ?? '').trim()
+  if (!clean) throw new Error('Textul este obligatoriu.')
+
+  const existingSnap = await get(dbRef(rtdb, 'footer'))
+  const existing = normalizeStringList(existingSnap.exists() ? existingSnap.val() : null)
+  const maxRank = existing.reduce((m, item) => {
+    const r = Number(item?.rank)
+    return Number.isFinite(r) ? Math.max(m, r) : m
+  }, -1)
+  const rank = maxRank + 1
+
+  const nodeRef = push(dbRef(rtdb, 'footer'))
   const id = String(nodeRef.key || '')
   if (!id) throw new Error('Nu am putut genera ID pentru text.')
 
@@ -121,11 +174,37 @@ export async function updateIntroText(id, text, rank) {
   return { id: cleanId, text: cleanText, rank: finalRank }
 }
 
+export async function updateFooterText(id, text, rank) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const cleanId = String(id ?? '').trim()
+  const cleanText = String(text ?? '').trim()
+  if (!cleanId) throw new Error('ID invalid.')
+  if (!cleanText) throw new Error('Textul este obligatoriu.')
+
+  let finalRank = Number(rank)
+  if (!Number.isFinite(finalRank)) {
+    const snap = await get(dbRef(rtdb, `footer/${cleanId}`))
+    const val = snap.exists() ? snap.val() : null
+    const r = val && typeof val === 'object' ? Number(val.rank) : NaN
+    finalRank = Number.isFinite(r) ? r : 0
+  }
+
+  await set(dbRef(rtdb, `footer/${cleanId}`), { text: cleanText, rank: finalRank })
+  return { id: cleanId, text: cleanText, rank: finalRank }
+}
+
 export async function deleteIntroText(id) {
   if (!rtdb) throw new Error('Realtime Database nu este configurat.')
   const cleanId = String(id ?? '').trim()
   if (!cleanId) throw new Error('ID invalid.')
   await remove(dbRef(rtdb, `intro/${cleanId}`))
+}
+
+export async function deleteFooterText(id) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const cleanId = String(id ?? '').trim()
+  if (!cleanId) throw new Error('ID invalid.')
+  await remove(dbRef(rtdb, `footer/${cleanId}`))
 }
 
 export async function saveIntroRanks(items) {
@@ -141,6 +220,21 @@ export async function saveIntroRanks(items) {
   }
 
   await update(dbRef(rtdb, 'intro'), payload)
+}
+
+export async function saveFooterRanks(items) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  if (!Array.isArray(items)) throw new Error('Lista de texte este invalidă.')
+
+  const payload = {}
+  for (let i = 0; i < items.length; i++) {
+    const id = String(items[i]?.id ?? '').trim()
+    const text = String(items[i]?.text ?? '').trim()
+    if (!id || !text) continue
+    payload[id] = { text, rank: i }
+  }
+
+  await update(dbRef(rtdb, 'footer'), payload)
 }
 
 export async function listCategories() {

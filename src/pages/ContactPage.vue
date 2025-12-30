@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
+import { useDisplay } from 'vuetify'
 import { app } from '../lib/firebase'
 
 const contact = reactive({
@@ -13,6 +14,9 @@ const contact = reactive({
 const sending = ref(false)
 const error = ref('')
 const sent = ref(false)
+
+const display = useDisplay()
+const submitBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
 
 const touched = reactive({
   name: false,
@@ -176,9 +180,11 @@ async function send() {
             @blur="touched.message = true"
           />
         </div>
-        <v-btn class="btn" type="submit" :disabled="!canSend || sending">
-          {{ sending ? 'Se trimite…' : 'Trimite' }}
-        </v-btn>
+        <div class="row d-flex justify-end">
+          <v-btn class="btn" type="submit" :size="submitBtnSize" :disabled="!canSend || sending">
+            {{ sending ? 'Se trimite…' : 'Trimite mesaj' }}
+          </v-btn>
+        </div>
       </form>
       <div class="card">
         <div class="info-section">
@@ -221,7 +227,6 @@ async function send() {
 .btn {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: #0b1220;
-  padding: .6rem .9rem;
   border-radius: 6px;
   cursor: pointer;
 }

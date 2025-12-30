@@ -130,7 +130,7 @@ watch(categorySlug, load)
             <strong class="name">{{ p.title }}</strong>
           </div>
           <p v-if="p.description" class="muted desc">{{ p.description }}</p>
-          <span v-if="p.price" class="pill">{{ p.price }} RON</span>
+          <!-- <span v-if="p.price" class="pill">{{ p.price }} RON</span> -->
           <div class="actions">
             <v-btn variant="flat" class="cta mt-2" color="cyan" :size="detailsBtnSize" @click="openDetails(p)">Detalii</v-btn>
           </div>
@@ -176,7 +176,7 @@ watch(categorySlug, load)
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn color="cyan" variant="flat" @click="closeDetails">OK</v-btn>
+          <v-btn color="cyan" variant="flat" class="mb-2 mr-2" :size="detailsBtnSize" @click="closeDetails">OK</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

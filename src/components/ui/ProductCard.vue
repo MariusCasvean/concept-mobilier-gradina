@@ -104,7 +104,7 @@ const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim(
 .oldPrice {
   color: var(--muted);
   text-decoration: line-through;
-  font-weight: 600;
+  font-weight: 500;
 }
 .newPrice {
   padding: .35rem .7rem;
@@ -112,7 +112,7 @@ const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim(
   font-size: .85rem;
   font-weight: 500;
   color: var(--card);
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background: var(--accent);
 }
 .actions {
   display: flex;

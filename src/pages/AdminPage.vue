@@ -2,8 +2,9 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import draggable from 'vuedraggable'
-import { rtdb } from '../lib/firebase'
+import { rtdb, storage } from '../lib/firebase'
 import { ref as dbRef, update, remove, push, set } from 'firebase/database'
+import { deleteObject, ref as storageRef } from 'firebase/storage'
 import { useAdminAuthStore } from '../stores/adminAuth'
 import {
   addFooterText,
@@ -116,6 +117,29 @@ const productsByCategoryId = computed(() => {
   }
   return map
 })
+
+function isFirebaseStorageUrl(url) {
+  const s = String(url || '')
+  if (!s) return false
+  if (s.startsWith('data:')) return false
+  return (
+    s.startsWith('gs://') ||
+    s.includes('firebasestorage.googleapis.com') ||
+    s.includes('storage.googleapis.com')
+  )
+}
+
+async function deleteStorageObjectByUrl(url) {
+  if (!storage) return
+  if (!isFirebaseStorageUrl(url)) return
+  try {
+    await deleteObject(storageRef(storage, url))
+  } catch (e) {
+    // Don't block DB deletion on Storage cleanup failures.
+    // eslint-disable-next-line no-console
+    console.warn('[storage] Failed to delete object:', url, e?.message || e)
+  }
+}
 
 const productOptions = computed(() => {
   return products.value.map((p) => ({ title: p.title, value: p.id }))
@@ -484,6 +508,9 @@ async function saveProduct() {
 async function deleteCategory(categoryId) {
   if (!rtdb) return
 
+	const category = categories.value.find((c) => String(c?.id ?? '') === String(categoryId))
+	const categoryImageUrl = category?.image || ''
+
   // Unlink products first
   const linked = products.value.filter((p) => String(p.categoryId ?? '') === String(categoryId))
   await Promise.all(
@@ -491,12 +518,16 @@ async function deleteCategory(categoryId) {
   )
 
   await remove(dbRef(rtdb, `categories/${categoryId}`))
+	await deleteStorageObjectByUrl(categoryImageUrl)
   await refresh()
 }
 
 async function deleteProduct(productId) {
   if (!rtdb) return
+	const product = products.value.find((p) => String(p?.id ?? '') === String(productId))
+	const productImageUrl = product?.image || ''
   await remove(dbRef(rtdb, `products/${productId}`))
+	await deleteStorageObjectByUrl(productImageUrl)
   await refresh()
 }
 

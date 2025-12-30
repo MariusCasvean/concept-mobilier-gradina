@@ -71,16 +71,18 @@ const filteredCategories = computed(() => {
     </div>
 
     <div v-else class="stack">
-      <v-text-field
-        v-model="query"
-        variant="outlined"
-        density="compact"
-        hide-details
-        clearable
-        append-inner-icon="mdi-magnify"
-        label="Caută categorie"
-        autocomplete="off"
-      />
+      <div class="stickySearch">
+        <v-text-field
+          v-model="query"
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+          append-inner-icon="mdi-magnify"
+          label="Caută categorie"
+          autocomplete="off"
+        />
+      </div>
 
       <div v-if="filteredCategories.length === 0" class="card">
         <strong>Nu am găsit categorii.</strong>
@@ -117,6 +119,29 @@ const filteredCategories = computed(() => {
 </template>
 
 <style scoped>
+.stickySearch {
+  position: sticky;
+  top: 64px;
+  z-index: 10;
+  padding: .5rem;
+  backdrop-filter: blur(100px);
+}
+
+@media (max-width: 599px) {
+  .stickySearch {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    border-radius: 0;
+    padding-left: max(clamp(12px, 4vw, 24px), env(safe-area-inset-left));
+    padding-right: max(clamp(12px, 4vw, 24px), env(safe-area-inset-right));
+  }
+}
+
+.stickySearch :deep(.v-field) {
+  background: transparent;
+}
+
 .grid {
   display: grid;
   grid-template-columns: 1fr;

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import draggable from 'vuedraggable'
 import { rtdb } from '../lib/firebase'
@@ -8,14 +8,17 @@ import { useAdminAuthStore } from '../stores/adminAuth'
 import {
   addFooterText,
   addIntroText,
+  deleteMessage,
   deleteFooterText,
   deleteIntroText,
   listCategories,
   listFooterTexts,
   listIntroTexts,
+  listMessages,
   listProducts,
   saveFooterRanks,
   saveIntroRanks,
+  subscribeMessages,
   updateFooterText,
   updateIntroText,
 } from '../services/productsService'
@@ -44,6 +47,9 @@ const footerEditId = ref('')
 const footerEditValue = ref('')
 const footerAddTouched = ref(false)
 const footerEditTouched = ref(false)
+
+const messages = ref([])
+const messagesSectionOpen = ref(false)
 
 const categoriesSectionOpen = ref(false)
 const productsSectionOpen = ref(false)
@@ -179,11 +185,18 @@ async function refresh() {
   loading.value = true
   error.value = ''
   try {
-    const [cats, prods, intro, footer] = await Promise.all([listCategories(), listProducts(), listIntroTexts(), listFooterTexts()])
+    const [cats, prods, intro, footer, msgs] = await Promise.all([
+      listCategories(),
+      listProducts(),
+      listIntroTexts(),
+      listFooterTexts(),
+      listMessages(),
+    ])
     categories.value = cats
     products.value = prods
     introTexts.value = intro
     footerTexts.value = footer
+    messages.value = msgs
     introAddOpen.value = false
     introAddValue.value = ''
     introEditId.value = ''
@@ -205,6 +218,51 @@ async function refresh() {
 }
 
 onMounted(refresh)
+
+let unsubscribeMessages = null
+onMounted(() => {
+  unsubscribeMessages = subscribeMessages(
+    (items) => {
+      messages.value = items
+    },
+    () => {}
+  )
+})
+
+onBeforeUnmount(() => {
+  unsubscribeMessages?.()
+  unsubscribeMessages = null
+})
+
+function textOrDash(v) {
+  const s = String(v ?? '').trim()
+  return s ? s : '—'
+}
+
+function formatCreatedAt(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n) || n <= 0) return '—'
+  try {
+    return new Intl.DateTimeFormat('ro-RO', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(n))
+  } catch {
+    return '—'
+  }
+}
+
+async function removeMessage(messageId) {
+  error.value = ''
+  try {
+    await deleteMessage(messageId)
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+}
 
 watch(categoryEditOpen, (open) => {
   if (!open) categoryImageFieldRef.value?.clearPendingFile?.()
@@ -1003,6 +1061,71 @@ async function persistFooterOrder() {
           </div>
         </v-expand-transition>
       </section>
+
+      <div class="divider" />
+
+      <section class="stack">
+        <div class="row sp-between">
+          <h2 class="sectionTitle">Mesaje primite</h2>
+          <div class="row" style="gap: .25rem;">
+            <span class="pill">{{ messages.length }} mesaje</span>
+            <v-btn
+              :size="actionBtnSize"
+              variant="text"
+              :icon="chevronFor(messagesSectionOpen)"
+              @click="messagesSectionOpen = !messagesSectionOpen"
+            />
+          </div>
+        </div>
+
+        <v-expand-transition>
+          <div v-show="messagesSectionOpen" class="stack">
+            <div v-if="!rtdb" class="card">
+              <strong>Eroare</strong>
+              <p class="muted">Realtime Database nu este configurat.</p>
+            </div>
+
+            <template v-else>
+              <div v-if="messages.length === 0" class="card">
+                <strong>Nu există mesaje.</strong>
+                <p class="muted">Mesajele trimise din site vor apărea aici.</p>
+              </div>
+
+              <div v-else class="messagesList">
+                <div v-for="m in messages" :key="m.id" class="card messageCard">
+                  <div class="row sp-between messageHead">
+                    <div class="stack" style="gap:.25rem; min-width:0;">
+                      <div class="muted"><strong>Subiect: </strong>{{ textOrDash(m.subject) }}</div>
+                      <div class="muted"><strong>De la: </strong> {{ textOrDash(m.name) }}</div>
+                    </div>
+                  </div>
+
+                  <div class="divider messageDivider" />
+
+                  <p class="muted messageBody"><strong>Mesaj: </strong><span class="message">{{ textOrDash(m.message) }}</span></p>
+
+                  <div class="messageMeta muted">
+                    <div><strong>Telefon:</strong> {{ textOrDash(m.phone) }}</div>
+                    <div><strong>E-mail:</strong> {{ textOrDash(m.email) }}</div>
+                    <div><strong>Primit:</strong> {{ formatCreatedAt(m.createdAt) }}</div>
+                  </div>
+
+                  <div class="row d-flex justify-end mt-4">
+                    <v-btn
+                      :size="actionBtnSize"
+                      variant="outlined"
+                      color="red"
+                      @click="askConfirm({ title: 'Șterge mesajul', text: 'Sigur vrei să ștergi acest mesaj?', action: () => removeMessage(m.id) })"
+                    >
+                      Șterge
+                    </v-btn>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </v-expand-transition>
+      </section>
     </div>
 
     <!-- Category Edit Dialog -->
@@ -1070,8 +1193,8 @@ async function persistFooterOrder() {
         <v-card-text class="muted">{{ confirmText }}</v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="confirmOpen = false">Renunță</v-btn>
-          <v-btn color="red" variant="flat" class="ok" @click="confirmYes">Șterge</v-btn>
+          <v-btn :size="dialogActionBtnSize" variant="text" @click="confirmOpen = false">Renunță</v-btn>
+          <v-btn :size="dialogActionBtnSize" color="red" variant="flat" class="ok" @click="confirmYes">Șterge</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1120,6 +1243,38 @@ async function persistFooterOrder() {
 .sectionTitle {
   margin: 0;
   font-size: 1.1rem;
+}
+.message {
+  color: var(--accent-);
+}
+.messagesList {
+  display: grid;
+  gap: .75rem;
+}
+.messageCard {
+  border: 1px solid rgba(255,255,255,.06);
+}
+.messageHead {
+  align-items: flex-start;
+  gap: .75rem;
+}
+.messageSubject {
+  line-height: 1.2;
+  word-break: break-word;
+}
+.messageDivider {
+  margin: .75rem 0;
+}
+.messageBody {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+.messageMeta {
+  display: grid;
+  gap: .25rem;
+  margin-top: .75rem;
+  font-size: .85rem;
 }
 .productsGrid {
   display: grid;

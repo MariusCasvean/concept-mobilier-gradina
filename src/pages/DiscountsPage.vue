@@ -151,7 +151,7 @@ onMounted(async () => {
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn color="cyan" variant="flat" :size="detailsBtnSize" @click="closeDetails">OK</v-btn>
+          <v-btn color="cyan" variant="flat" class="mr-2 mb-2" :size="detailsBtnSize" @click="closeDetails">OK</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

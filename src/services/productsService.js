@@ -71,6 +71,29 @@ function normalizeStringList(val) {
   return []
 }
 
+function normalizeMessages(val) {
+  const items = normalizeList(val)
+    .map((m) => ({
+      ...m,
+      id: String(m.id),
+      subject: typeof m.subject === 'string' ? m.subject : (typeof m.title === 'string' ? m.title : ''),
+      name: typeof m.name === 'string' ? m.name : '',
+      message: typeof m.message === 'string' ? m.message : (typeof m.text === 'string' ? m.text : ''),
+      phone: typeof m.phone === 'string' ? m.phone : '',
+      email: typeof m.email === 'string' ? m.email : '',
+      createdAt: m.createdAt,
+    }))
+
+  return items.sort((a, b) => {
+    const ta = Number(a?.createdAt)
+    const tb = Number(b?.createdAt)
+    const fa = Number.isFinite(ta) ? ta : -Infinity
+    const fb = Number.isFinite(tb) ? tb : -Infinity
+    if (fa !== fb) return fb - fa
+    return String(b.id).localeCompare(String(a.id))
+  })
+}
+
 export async function listIntroTexts() {
   if (!rtdb) {
     await sleep(40)
@@ -111,6 +134,45 @@ export function subscribeFooterTexts(onItems, onError) {
   )
 
   return typeof unsub === 'function' ? unsub : () => {}
+}
+
+export async function listMessages() {
+  if (!rtdb) {
+    await sleep(40)
+    return []
+  }
+
+  const snap = await get(dbRef(rtdb, 'messages'))
+  return normalizeMessages(snap.exists() ? snap.val() : null)
+}
+
+export function subscribeMessages(onItems, onError) {
+  const emit = typeof onItems === 'function' ? onItems : () => {}
+  const emitError = typeof onError === 'function' ? onError : () => {}
+
+  if (!rtdb) {
+    emit([])
+    return () => {}
+  }
+
+  const unsub = onValue(
+    dbRef(rtdb, 'messages'),
+    (snap) => {
+      emit(normalizeMessages(snap.exists() ? snap.val() : null))
+    },
+    (err) => {
+      emitError(err)
+    }
+  )
+
+  return typeof unsub === 'function' ? unsub : () => {}
+}
+
+export async function deleteMessage(id) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const cleanId = String(id ?? '').trim()
+  if (!cleanId) throw new Error('ID invalid.')
+  await remove(dbRef(rtdb, `messages/${cleanId}`))
 }
 
 export async function addIntroText(text) {

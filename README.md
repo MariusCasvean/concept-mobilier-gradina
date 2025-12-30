@@ -57,8 +57,8 @@ To verify ownership of the custom domain `concept-mobila-gradina.com`, you need 
 
 2. **Add a TXT record** for domain verification:
    - Go to your domain registrar's DNS settings
-   - Add a TXT record with name: `_github-pages-challenge-MariusCasvean`
-   - Value: (obtain from GitHub repository Settings → Pages → Custom domain)
+   - GitHub will provide the exact TXT record name and value in: Settings → Pages → Custom domain
+   - Add a TXT record with the name and value provided by GitHub
    - This helps GitHub verify you own the domain
 
 3. **Add CNAME record** (optional, for www subdomain):

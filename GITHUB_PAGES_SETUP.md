@@ -53,12 +53,15 @@ Add these four A records to point your apex domain to GitHub Pages:
 This record proves you own the domain:
 
 1. In GitHub, go to **Settings** → **Pages**
-2. Under **Custom domain**, you'll see instructions to add a TXT record
-3. The record name will be something like: `_github-pages-challenge-MariusCasvean`
-4. Copy the verification value shown by GitHub
-5. Add a TXT record with:
-   - **Name/Host**: `_github-pages-challenge-MariusCasvean` (or as shown by GitHub)
-   - **Value**: The verification code from GitHub (a long string)
+2. Enter your custom domain: `concept-mobila-gradina.com`
+3. GitHub will provide specific instructions with the exact TXT record name and value
+4. The record name will be in the format: `_github-pages-challenge-<username>`
+5. Copy both the record name and verification code provided by GitHub
+6. Add a TXT record in your DNS settings with:
+   - **Name/Host**: The exact name provided by GitHub (e.g., `_github-pages-challenge-MariusCasvean`)
+   - **Value**: The verification code from GitHub (a long alphanumeric string)
+
+**Important**: Do not guess the TXT record name - always use the exact name shown in your GitHub Pages settings.
 
 #### CNAME Record (Optional - for www subdomain)
 

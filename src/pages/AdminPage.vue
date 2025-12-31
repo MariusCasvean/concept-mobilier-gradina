@@ -46,6 +46,8 @@ import {
 import ImageUploadField from '../components/ui/ImageUploadField.vue'
 import PageLoader from '../components/ui/PageLoader.vue'
 
+import { getAdminPassword, setAdminPassword } from '../services/adminPasswordService'
+
 const adminAuth = useAdminAuthStore()
 
 const loading = ref(true)
@@ -114,6 +116,16 @@ const introProductsSectionOpen = ref(false)
 const introDiscountSectionOpen = ref(false)
 const introContactSectionOpen = ref(false)
 const footerSectionOpen = ref(false)
+const confidentialSectionOpen = ref(false)
+
+const newAdminPassword = ref('')
+const newAdminPasswordTouched = ref(false)
+const showNewAdminPassword = ref(false)
+const savingAdminPassword = ref(false)
+
+const currentAdminPassword = ref('')
+const currentAdminPasswordTouched = ref(false)
+const showCurrentAdminPassword = ref(false)
 
 const chevronFor = (open) => (open ? 'mdi-chevron-up' : 'mdi-chevron-down')
 
@@ -163,6 +175,16 @@ const canSaveContactInfoAdd = computed(() => Boolean(contactInfoAddLabelTrimmed.
 const canSaveContactInfoEdit = computed(() => Boolean(contactInfoEditId.value) && Boolean(contactInfoEditLabelTrimmed.value) && contactInfoEditLines.value.length > 0)
 
 const introRequiredError = 'Câmp obligatoriu.'
+
+const currentAdminPasswordTrimmed = computed(() => String(currentAdminPassword.value ?? '').trim())
+const newAdminPasswordTrimmed = computed(() => String(newAdminPassword.value ?? '').trim())
+const canSaveNewAdminPassword = computed(() => Boolean(currentAdminPasswordTrimmed.value) && Boolean(newAdminPasswordTrimmed.value))
+
+const canCancelAdminPasswordChange = computed(() => {
+  const currentRaw = String(currentAdminPassword.value ?? '')
+  const nextRaw = String(newAdminPassword.value ?? '')
+  return currentRaw !== '' || nextRaw !== ''
+})
 
 const categoryEditOpen = ref(false)
 const productEditOpen = ref(false)
@@ -541,9 +563,9 @@ function showSuccess(message) {
   snackbarOpen.value = true
 }
 
-function showError() {
+function showError(message) {
   snackbarColor.value = 'error'
-  snackbarText.value = 'A apărut o eroare'
+  snackbarText.value = String(message || '').trim() || 'A apărut o eroare'
   snackbarOpen.value = true
 }
 
@@ -1323,6 +1345,44 @@ async function persistContactInfoOrder() {
   } catch (e) {
     error.value = e?.message || String(e)
     showError()
+  }
+}
+
+async function saveNewAdminPassword() {
+  error.value = ''
+  if (savingAdminPassword.value) return
+
+  currentAdminPasswordTouched.value = true
+  newAdminPasswordTouched.value = true
+  if (!canSaveNewAdminPassword.value) return
+
+  savingAdminPassword.value = true
+  try {
+    const expected = await getAdminPassword()
+    const expectedTrimmed = String(expected ?? '').trim()
+
+    if (!expectedTrimmed) {
+      showError('Parola admin nu este setată încă.')
+      return
+    }
+
+    if (currentAdminPasswordTrimmed.value !== expectedTrimmed) {
+      showError('Parola curentă nu este corectă.')
+      return
+    }
+
+    await setAdminPassword(newAdminPasswordTrimmed.value)
+    currentAdminPassword.value = ''
+    currentAdminPasswordTouched.value = false
+    showCurrentAdminPassword.value = false
+    newAdminPassword.value = ''
+    newAdminPasswordTouched.value = false
+    showNewAdminPassword.value = false
+    showSuccess('Parola admin a fost actualizată.')
+  } catch (e) {
+    showError(e?.message || String(e))
+  } finally {
+    savingAdminPassword.value = false
   }
 }
 </script>
@@ -2263,6 +2323,108 @@ async function persistContactInfoOrder() {
           </div>
         </v-expand-transition>
       </section>
+
+      <div class="divider" />
+
+      <section class="stack">
+        <div class="row sp-between">
+          <h2 class="sectionTitle d-flex align-center">Confidențial<v-icon class="ml-2" size="18" color="red">mdi-alert</v-icon></h2>
+          <div class="row" style="gap: .25rem;">
+            <v-btn
+              :size="actionBtnSize"
+              variant="text"
+              :icon="chevronFor(confidentialSectionOpen)"
+              @click="confidentialSectionOpen = !confidentialSectionOpen"
+            />
+          </div>
+        </div>
+
+        <v-expand-transition>
+          <div v-show="confidentialSectionOpen" class="stack">
+            <div v-if="!rtdb" class="card">
+              <strong>Eroare</strong>
+              <p class="muted">Realtime Database nu este configurat.</p>
+            </div>
+
+            <div v-else class="card" style="position: relative;">
+              <v-overlay :model-value="savingAdminPassword" contained class="align-center justify-center">
+                <v-progress-circular indeterminate color="cyan" />
+              </v-overlay>
+
+              <div class="stack">
+                <p class="muted" style="margin:0;">Schimbă parola de administrare</p>
+
+                <div :class="isMobile ? 'stack' : 'row'" style="gap: .75rem; flex-wrap: wrap;">
+                  <v-text-field
+                    v-model="currentAdminPassword"
+                    label="Parola curentă *"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    name="admin_current_pass"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    :type="showCurrentAdminPassword ? 'text' : 'password'"
+                    :append-inner-icon="showCurrentAdminPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                    :error="currentAdminPasswordTouched && !currentAdminPasswordTrimmed"
+                    :error-messages="currentAdminPasswordTouched && !currentAdminPasswordTrimmed ? introRequiredError : ''"
+                    :disabled="savingAdminPassword"
+                    style="flex: 1 1 260px;"
+                    @click:append-inner="showCurrentAdminPassword = !showCurrentAdminPassword"
+                    @blur="currentAdminPasswordTouched = true"
+                    @keydown.enter.prevent="saveNewAdminPassword"
+                  />
+
+                  <v-text-field
+                    v-model="newAdminPassword"
+                    label="Parolă nouă *"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    name="admin_new_pass"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    :type="showNewAdminPassword ? 'text' : 'password'"
+                    :append-inner-icon="showNewAdminPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                    :error="newAdminPasswordTouched && !newAdminPasswordTrimmed"
+                    :error-messages="newAdminPasswordTouched && !newAdminPasswordTrimmed ? introRequiredError : ''"
+                    :disabled="savingAdminPassword"
+                    style="flex: 1 1 260px;"
+                    @click:append-inner="showNewAdminPassword = !showNewAdminPassword"
+                    @blur="newAdminPasswordTouched = true"
+                    @keydown.enter.prevent="saveNewAdminPassword"
+                  />
+                </div>
+
+                <div class="row d-flex justify-end">
+                  <v-btn
+                    :size="actionBtnSize"
+                    variant="text"
+                    :disabled="savingAdminPassword || !canCancelAdminPasswordChange"
+                    @click="currentAdminPassword = ''; currentAdminPasswordTouched = false; showCurrentAdminPassword = false; newAdminPassword = ''; newAdminPasswordTouched = false; showNewAdminPassword = false"
+                  >
+                    Renunță
+                  </v-btn>
+                  <v-btn
+                    :size="actionBtnSize"
+                    color="cyan"
+                    variant="flat"
+                    :loading="savingAdminPassword"
+                    :disabled="savingAdminPassword || !canSaveNewAdminPassword"
+                    @click="saveNewAdminPassword"
+                  >
+                    Salvează
+                  </v-btn>
+                </div>
+              </div>
+            </div>
+          </div>
+        </v-expand-transition>
+      </section>
+
+      <div class="divider" />
     </div>
 
     <!-- Category Edit Dialog -->

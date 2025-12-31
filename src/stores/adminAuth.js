@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 
-export const ADMIN_PASSWORD = 'marius'
+import { getAdminPassword } from '../services/adminPasswordService'
+
 const ADMIN_SESSION_KEY = 'cmg_admin_session_v1'
 const ADMIN_SESSION_TTL_MS = 24 * 60 * 60 * 1000
 
@@ -51,20 +52,43 @@ export const useAdminAuthStore = defineStore('adminAuth', {
   state: () => ({
     authorized: readSession().ok,
     lastError: '',
+    checking: false,
   }),
   actions: {
-    checkPassword(password) {
-      const ok = String(password || '') === ADMIN_PASSWORD
-      this.authorized = ok
-      this.lastError = ok ? '' : 'Parola nu este corectă.'
+    async checkPassword(password) {
+      if (this.checking) return false
+      this.checking = true
+      this.lastError = ''
 
-      if (ok) writeSession(Date.now() + ADMIN_SESSION_TTL_MS)
-      else clearSession()
-      return ok
+      try {
+        const expected = await getAdminPassword()
+        if (!String(expected || '').trim()) {
+          this.authorized = false
+          this.lastError = 'Parola admin nu este setată încă.'
+          clearSession()
+          return false
+        }
+
+        const ok = String(password || '') === String(expected || '')
+        this.authorized = ok
+        this.lastError = ok ? '' : 'Parola nu este corectă.'
+
+        if (ok) writeSession(Date.now() + ADMIN_SESSION_TTL_MS)
+        else clearSession()
+        return ok
+      } catch (e) {
+        this.authorized = false
+        this.lastError = e?.message || 'A apărut o eroare la verificarea parolei.'
+        clearSession()
+        return false
+      } finally {
+        this.checking = false
+      }
     },
     logout() {
       this.authorized = false
       this.lastError = ''
+      this.checking = false
       clearSession()
     },
     syncFromStorage() {

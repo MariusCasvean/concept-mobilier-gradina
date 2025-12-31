@@ -11,6 +11,8 @@ const adminDialog = ref(false)
 const adminPassword = ref('')
 const showPassword = ref(false)
 
+const canConfirmAdmin = computed(() => String(adminPassword.value ?? '') !== '')
+
 const footerTexts = ref([])
 
 const footerFallbackLines = [
@@ -67,8 +69,9 @@ function cancelAdmin() {
   showPassword.value = false
 }
 
-function confirmAdmin() {
-  const ok = adminAuth.checkPassword(adminPassword.value)
+async function confirmAdmin() {
+  if (!canConfirmAdmin.value || adminAuth.checking) return
+  const ok = await adminAuth.checkPassword(adminPassword.value)
   if (!ok) return
   adminDialog.value = false
   adminPassword.value = ''
@@ -172,7 +175,10 @@ function confirmAdmin() {
               variant="outlined"
               density="compact"
               hide-details
-              autocomplete="new-password"
+              name="admin_login_pass"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
               :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
               @click:append-inner="showPassword = !showPassword"
               @keydown.enter.prevent="confirmAdmin"
@@ -181,8 +187,8 @@ function confirmAdmin() {
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="cancelAdmin">Renunță</v-btn>
-          <v-btn color="cyan" variant="flat" @click="confirmAdmin">Ok</v-btn>
+          <v-btn variant="text" :disabled="adminAuth.checking" @click="cancelAdmin">Renunță</v-btn>
+          <v-btn color="cyan" variant="flat" :loading="adminAuth.checking" :disabled="adminAuth.checking || !canConfirmAdmin" @click="confirmAdmin">Ok</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

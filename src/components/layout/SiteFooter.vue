@@ -93,7 +93,7 @@ function confirmAdmin() {
           <div class="muted font-weight-bold">Social media</div>
           <div class="social-container">
             <a
-              href="https://www.facebook.com/fola.claudiueugen?locale=ro_RO"
+              href="https://www.facebook.com/share/17cAYJ6NTe/?mibextid=wwXIfr"
               target="_blank"
               rel="noreferrer"
               aria-label="Facebook"

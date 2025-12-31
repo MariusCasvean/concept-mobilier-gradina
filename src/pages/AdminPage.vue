@@ -77,9 +77,18 @@ const categoryEditOpen = ref(false)
 const productEditOpen = ref(false)
 const confirmOpen = ref(false)
 
+const savingCategory = ref(false)
+const savingProduct = ref(false)
+const confirmLoading = ref(false)
+
+const snackbarOpen = ref(false)
+const snackbarText = ref('')
+const snackbarColor = ref('success')
+
 const confirmTitle = ref('')
 const confirmText = ref('')
 let confirmAction = null
+const confirmSuccessMessage = ref('')
 
 const editingCategory = ref(null)
 const editingProduct = ref(null)
@@ -285,6 +294,7 @@ async function removeMessage(messageId) {
     await deleteMessage(messageId)
   } catch (e) {
     error.value = e?.message || String(e)
+		throw e
   }
 }
 
@@ -361,20 +371,55 @@ function askConfirm({ title, text, action }) {
   confirmTitle.value = title
   confirmText.value = text
   confirmAction = action
+  confirmSuccessMessage.value = ''
   confirmOpen.value = true
 }
 
+function askConfirmWithSuccess({ title, text, action, successMessage }) {
+  askConfirm({ title, text, action })
+  confirmSuccessMessage.value = String(successMessage || '').trim()
+}
+
+function showSuccess(message) {
+  snackbarColor.value = 'success'
+  snackbarText.value = String(message || '').trim() || 'Succes.'
+  snackbarOpen.value = true
+}
+
+function showError() {
+  snackbarColor.value = 'error'
+  snackbarText.value = 'A apărut o eroare'
+  snackbarOpen.value = true
+}
+
+watch(confirmOpen, (open) => {
+  if (!open && !confirmLoading.value) {
+    confirmAction = null
+    confirmSuccessMessage.value = ''
+  }
+})
+
 async function confirmYes() {
-  if (!confirmAction) return
-  confirmOpen.value = false
-  const action = confirmAction
-  confirmAction = null
-  await action()
+  if (!confirmAction || confirmLoading.value) return
+  confirmLoading.value = true
+  try {
+    await confirmAction()
+    confirmOpen.value = false
+    showSuccess(confirmSuccessMessage.value || 'Elementul a fost șters.')
+    confirmAction = null
+    confirmSuccessMessage.value = ''
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError()
+  } finally {
+    confirmLoading.value = false
+  }
 }
 
 async function saveCategory() {
   if (!rtdb) {
     error.value = 'Realtime Database nu este configurat.'
+    showError()
     return
   }
 
@@ -386,6 +431,8 @@ async function saveCategory() {
     error.value = 'Titlul categoriei este obligatoriu.'
     return
   }
+
+  savingCategory.value = true
 
   let categoryId = String(c.id || '')
   const isNew = !categoryId
@@ -402,10 +449,6 @@ async function saveCategory() {
   try {
     const uploadedUrl = await categoryImageFieldRef.value?.uploadSelected?.({ entityId: categoryId, storeAs: 'storage' })
     if (uploadedUrl) categoryForm.value.image = uploadedUrl
-  } catch (e) {
-    error.value = e?.message || String(e)
-    return
-  }
 
   const payload = {
     title,
@@ -442,12 +485,20 @@ async function saveCategory() {
   await Promise.all(linkOps)
 
   categoryEditOpen.value = false
+  showSuccess('Categoria a fost salvată')
   await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError()
+  } finally {
+    savingCategory.value = false
+  }
 }
 
 async function saveProduct() {
   if (!rtdb) {
     error.value = 'Realtime Database nu este configurat.'
+    showError()
     return
   }
 
@@ -459,6 +510,8 @@ async function saveProduct() {
     error.value = 'Titlul produsului este obligatoriu.'
     return
   }
+
+  savingProduct.value = true
 
   let productId = String(p.id || '')
   const isNew = !productId
@@ -475,10 +528,6 @@ async function saveProduct() {
   try {
     const uploadedUrl = await productImageFieldRef.value?.uploadSelected?.({ entityId: productId, storeAs: 'storage' })
     if (uploadedUrl) productForm.value.image = uploadedUrl
-  } catch (e) {
-    error.value = e?.message || String(e)
-    return
-  }
 
   const payload = {
     title,
@@ -502,7 +551,14 @@ async function saveProduct() {
   }
 
   productEditOpen.value = false
+  showSuccess('Produsul a fost salvat')
   await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError()
+  } finally {
+    savingProduct.value = false
+  }
 }
 
 async function deleteCategory(categoryId) {
@@ -592,6 +648,7 @@ async function removeIntro(itemId) {
     await refresh()
   } catch (e) {
     error.value = e?.message || String(e)
+		throw e
   }
 }
 
@@ -678,6 +735,7 @@ async function removeFooter(itemId) {
     await refresh()
   } catch (e) {
     error.value = e?.message || String(e)
+		throw e
   }
 }
 
@@ -800,7 +858,7 @@ async function persistFooterOrder() {
                 :size="actionBtnSize"
                 variant="outlined"
                 color="red"
-                @click="askConfirm({ title: 'Șterge categoria', text: `Sigur vrei să ștergi categoria ${c.title}?`, action: () => deleteCategory(c.id) })"
+                @click="askConfirmWithSuccess({ title: 'Șterge categoria', text: `Sigur vrei să ștergi categoria ${c.title}?`, action: () => deleteCategory(c.id), successMessage: 'Categoria a fost ștearsă' })"
               >
                 Șterge categorie
               </v-btn>
@@ -872,7 +930,7 @@ async function persistFooterOrder() {
                       :size="actionBtnSize"
                       variant="outlined"
                       color="red"
-                      @click="askConfirm({ title: 'Șterge produsul', text: `Sigur vrei să ștergi produsul ${p.title}?`, action: () => deleteProduct(p.id) })"
+                      @click="askConfirmWithSuccess({ title: 'Șterge produsul', text: `Sigur vrei să ștergi produsul ${p.title}?`, action: () => deleteProduct(p.id), successMessage: 'Produsul a fost șters' })"
                     >
                       Șterge produs
                     </v-btn>
@@ -974,7 +1032,7 @@ async function persistFooterOrder() {
                           :size="actionBtnSize"
                           variant="outlined"
                           color="red"
-                          @click="askConfirm({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeIntro(t.id) })"
+                          @click="askConfirmWithSuccess({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeIntro(t.id), successMessage: 'Elementul a fost șters.' })"
                         >
                           Șterge text
                         </v-btn>
@@ -1079,7 +1137,7 @@ async function persistFooterOrder() {
                           :size="actionBtnSize"
                           variant="outlined"
                           color="red"
-                          @click="askConfirm({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeFooter(t.id) })"
+                          @click="askConfirmWithSuccess({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeFooter(t.id), successMessage: 'Elementul a fost șters.' })"
                         >
                           Șterge text
                         </v-btn>
@@ -1146,7 +1204,7 @@ async function persistFooterOrder() {
                       :size="actionBtnSize"
                       variant="outlined"
                       color="red"
-                      @click="askConfirm({ title: 'Șterge mesajul', text: 'Sigur vrei să ștergi acest mesaj?', action: () => removeMessage(m.id) })"
+                      @click="askConfirmWithSuccess({ title: 'Șterge mesajul', text: 'Sigur vrei să ștergi acest mesaj?', action: () => removeMessage(m.id), successMessage: 'Mesajul a fost șters' })"
                     >
                       Șterge
                     </v-btn>
@@ -1160,8 +1218,11 @@ async function persistFooterOrder() {
     </div>
 
     <!-- Category Edit Dialog -->
-    <v-dialog v-model="categoryEditOpen" max-width="720">
+    <v-dialog v-model="categoryEditOpen" max-width="720" :persistent="savingCategory">
       <v-card class="card" elevation="2">
+			<v-overlay :model-value="savingCategory" contained class="align-center justify-center">
+				<v-progress-circular indeterminate color="cyan" />
+			</v-overlay>
         <v-card-title>{{ editingCategory ? 'Editează categoria' : 'Adaugă categorie nouă' }}</v-card-title>
         <v-card-text>
           <v-text-field v-model="categoryForm.title" label="Titlu *" variant="outlined" density="compact" autocomplete="off" :rules="[requiredRule]" />
@@ -1183,15 +1244,18 @@ async function persistFooterOrder() {
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn :size="dialogActionBtnSize" variant="text" @click="categoryEditOpen = false">Renunță</v-btn>
-          <v-btn :size="dialogActionBtnSize" color="cyan" variant="flat" :disabled="!isCategoryValid" @click="saveCategory">Salvează</v-btn>
+          <v-btn :size="dialogActionBtnSize" variant="text" :disabled="savingCategory" @click="categoryEditOpen = false">Renunță</v-btn>
+          <v-btn :size="dialogActionBtnSize" color="cyan" variant="flat" :loading="savingCategory" :disabled="!isCategoryValid || savingCategory" @click="saveCategory">Salvează</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
     <!-- Product Edit Dialog -->
-    <v-dialog v-model="productEditOpen" max-width="720">
+    <v-dialog v-model="productEditOpen" max-width="720" :persistent="savingProduct">
       <v-card class="card" elevation="2">
+			<v-overlay :model-value="savingProduct" contained class="align-center justify-center">
+				<v-progress-circular indeterminate color="cyan" />
+			</v-overlay>
         <v-card-title>{{ editingProduct ? 'Editează produsul' : 'Adaugă produs' }}</v-card-title>
         <v-card-text>
           <v-text-field v-model="productForm.title" label="Titlu *" variant="outlined" density="compact" autocomplete="off" :rules="[requiredRule]" />
@@ -1211,24 +1275,31 @@ async function persistFooterOrder() {
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn :size="dialogActionBtnSize" variant="text" @click="productEditOpen = false">Renunță</v-btn>
-          <v-btn :size="dialogActionBtnSize" color="cyan" variant="flat" class="ok" :disabled="!isProductValid" @click="saveProduct">Salvează</v-btn>
+          <v-btn :size="dialogActionBtnSize" variant="text" :disabled="savingProduct" @click="productEditOpen = false">Renunță</v-btn>
+          <v-btn :size="dialogActionBtnSize" color="cyan" variant="flat" class="ok" :loading="savingProduct" :disabled="!isProductValid || savingProduct" @click="saveProduct">Salvează</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
     <!-- Confirmation Dialog -->
-    <v-dialog v-model="confirmOpen" max-width="520">
+    <v-dialog v-model="confirmOpen" max-width="520" :persistent="confirmLoading">
       <v-card class="card" elevation="2">
+      <v-overlay :model-value="confirmLoading" contained class="align-center justify-center">
+        <v-progress-circular indeterminate color="cyan" />
+      </v-overlay>
         <v-card-title>{{ confirmTitle }}</v-card-title>
         <v-card-text class="muted">{{ confirmText }}</v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn :size="dialogActionBtnSize" variant="text" @click="confirmOpen = false">Renunță</v-btn>
-          <v-btn :size="dialogActionBtnSize" color="red" variant="flat" class="ok" @click="confirmYes">Șterge</v-btn>
+          <v-btn :size="dialogActionBtnSize" variant="text" :disabled="confirmLoading" @click="confirmOpen = false">Renunță</v-btn>
+          <v-btn :size="dialogActionBtnSize" color="red" variant="flat" class="ok" :loading="confirmLoading" :disabled="confirmLoading" @click="confirmYes">Șterge</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-snackbar v-model="snackbarOpen" class="snackbarFit" :color="snackbarColor" location="bottom end" timeout="3000">
+      {{ snackbarText }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -1248,6 +1319,17 @@ async function persistFooterOrder() {
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 10px;
   background: transparent;
+}
+
+.snackbarFit :deep(.v-snackbar__wrapper) {
+  width: fit-content;
+  min-width: 0;
+  max-width: min(92vw, 720px);
+}
+
+.snackbarFit :deep(.v-snackbar__content) {
+  width: fit-content;
+  white-space: normal;
 }
 .category {
   border: 1px solid rgba(255,255,255,.06);

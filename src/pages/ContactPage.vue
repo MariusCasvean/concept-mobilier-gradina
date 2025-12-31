@@ -1,7 +1,8 @@
 <script setup>
-import { computed, nextTick, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useDisplay } from 'vuetify'
-import { app } from '../lib/firebase'
+import { app, rtdb } from '../lib/firebase'
+import { listIntroContactTexts } from '../services/productsService'
 
 const contact = reactive({
   name: '',
@@ -14,6 +15,14 @@ const contact = reactive({
 const sending = ref(false)
 const error = ref('')
 const sent = ref(false)
+
+const introTexts = ref([])
+const introLoading = ref(Boolean(rtdb))
+
+const introLines = computed(() => {
+  if (introLoading.value) return []
+  return introTexts.value.map((x) => String(x?.text || '').trim()).filter(Boolean)
+})
 
 const display = useDisplay()
 const submitBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
@@ -72,6 +81,19 @@ const canSend = computed(() => {
     String(contact.phone).trim().length > 0 &&
     String(contact.message).trim().length > 0
   )
+})
+
+onMounted(async () => {
+  if (!rtdb) {
+    introLoading.value = false
+    return
+  }
+  try {
+    introTexts.value = await listIntroContactTexts()
+  } catch {
+  } finally {
+    introLoading.value = false
+  }
 })
 
 async function send() {
@@ -151,7 +173,9 @@ async function send() {
       <p class="muted">{{ error }}</p>
     </div>
 
-    <p class="muted">Lasă-ne un mesaj folosind formularul de mai jos sau contactează-ne prin oricare din metodele indicate. Vom fi bucuroși să te ajutăm cu orice informație ai nevoie!</p>
+    <div class="stack" style="gap: .35rem;">
+      <p v-for="(t, idx) in introLines" :key="idx" class="muted">{{ t }}</p>
+    </div>
     <div class="grid">
       <form class="card" @submit.prevent="send">
         <div class="row">

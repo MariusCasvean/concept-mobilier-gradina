@@ -3,8 +3,9 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import PageLoader from '../components/ui/PageLoader.vue'
+import { rtdb } from '../lib/firebase'
 import { normalizeForSearch } from '../lib/text'
-import { listCategories, listProducts } from '../services/productsService'
+import { listCategories, listIntroProductsTexts, listProducts } from '../services/productsService'
 
 const router = useRouter()
 const categories = ref([])
@@ -12,6 +13,14 @@ const products = ref([])
 const error = ref('')
 const loading = ref(true)
 const query = ref('')
+
+const introTexts = ref([])
+const introLoading = ref(Boolean(rtdb))
+
+const introLines = computed(() => {
+  if (introLoading.value) return []
+  return introTexts.value.map((x) => String(x?.text || '').trim()).filter(Boolean)
+})
 
 const display = useDisplay()
 const seeProductsBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
@@ -28,12 +37,14 @@ const productCountByCategoryId = computed(() => {
 
 onMounted(async () => {
   try {
-    const [cats, prods] = await Promise.all([listCategories(), listProducts()])
+    const [cats, prods, intro] = await Promise.all([listCategories(), listProducts(), listIntroProductsTexts()])
     categories.value = cats
     products.value = prods
+    introTexts.value = intro
   } catch (e) {
     error.value = e?.message || String(e)
   } finally {
+    introLoading.value = false
     loading.value = false
   }
 })
@@ -62,8 +73,8 @@ const filteredCategories = computed(() => {
       <div v-if="!loading" class="row">
         <span class="pill">{{ categories.length }} categorii</span>
       </div>
-      <div v-if="!loading" class="row mt-5">
-        <p class="muted">Navigheaza printre produse, alege care îți place și nu ezita să iei legatura cu noi, pentru orice detalii sau pentru a plasa o comandă.</p>
+      <div v-if="!loading" class="stack mt-5" style="width: 100%;">
+        <p v-for="(t, idx) in introLines" :key="idx" class="muted">{{ t }}</p>
       </div>
     </header>
 

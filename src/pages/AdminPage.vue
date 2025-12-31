@@ -7,19 +7,34 @@ import { ref as dbRef, update, remove, push, set } from 'firebase/database'
 import { deleteObject, ref as storageRef } from 'firebase/storage'
 import { useAdminAuthStore } from '../stores/adminAuth'
 import {
+  addIntroContactText,
+  addIntroDiscountText,
+  addIntroProductsText,
   addFooterText,
   addIntroText,
   deleteMessage,
+  deleteIntroContactText,
+  deleteIntroDiscountText,
+  deleteIntroProductsText,
   deleteFooterText,
   deleteIntroText,
   listCategories,
   listFooterTexts,
+  listIntroContactTexts,
+  listIntroDiscountTexts,
+  listIntroProductsTexts,
   listIntroTexts,
   listMessages,
   listProducts,
+  saveIntroContactRanks,
+  saveIntroDiscountRanks,
+  saveIntroProductsRanks,
   saveFooterRanks,
   saveIntroRanks,
   subscribeMessages,
+  updateIntroContactText,
+  updateIntroDiscountText,
+  updateIntroProductsText,
   updateFooterText,
   updateIntroText,
 } from '../services/productsService'
@@ -41,6 +56,30 @@ const introEditValue = ref('')
 const introAddTouched = ref(false)
 const introEditTouched = ref(false)
 
+const introProductsTexts = ref([])
+const introProductsAddOpen = ref(false)
+const introProductsAddValue = ref('')
+const introProductsEditId = ref('')
+const introProductsEditValue = ref('')
+const introProductsAddTouched = ref(false)
+const introProductsEditTouched = ref(false)
+
+const introDiscountTexts = ref([])
+const introDiscountAddOpen = ref(false)
+const introDiscountAddValue = ref('')
+const introDiscountEditId = ref('')
+const introDiscountEditValue = ref('')
+const introDiscountAddTouched = ref(false)
+const introDiscountEditTouched = ref(false)
+
+const introContactTexts = ref([])
+const introContactAddOpen = ref(false)
+const introContactAddValue = ref('')
+const introContactEditId = ref('')
+const introContactEditValue = ref('')
+const introContactAddTouched = ref(false)
+const introContactEditTouched = ref(false)
+
 const footerTexts = ref([])
 const footerAddOpen = ref(false)
 const footerAddValue = ref('')
@@ -55,6 +94,9 @@ const messagesSectionOpen = ref(false)
 const categoriesSectionOpen = ref(false)
 const productsSectionOpen = ref(false)
 const introSectionOpen = ref(false)
+const introProductsSectionOpen = ref(false)
+const introDiscountSectionOpen = ref(false)
+const introContactSectionOpen = ref(false)
 const footerSectionOpen = ref(false)
 
 const chevronFor = (open) => (open ? 'mdi-chevron-up' : 'mdi-chevron-down')
@@ -62,11 +104,29 @@ const chevronFor = (open) => (open ? 'mdi-chevron-up' : 'mdi-chevron-down')
 const introAddTrimmed = computed(() => String(introAddValue.value ?? '').trim())
 const introEditTrimmed = computed(() => String(introEditValue.value ?? '').trim())
 
+const introProductsAddTrimmed = computed(() => String(introProductsAddValue.value ?? '').trim())
+const introProductsEditTrimmed = computed(() => String(introProductsEditValue.value ?? '').trim())
+
+const introDiscountAddTrimmed = computed(() => String(introDiscountAddValue.value ?? '').trim())
+const introDiscountEditTrimmed = computed(() => String(introDiscountEditValue.value ?? '').trim())
+
+const introContactAddTrimmed = computed(() => String(introContactAddValue.value ?? '').trim())
+const introContactEditTrimmed = computed(() => String(introContactEditValue.value ?? '').trim())
+
 const footerAddTrimmed = computed(() => String(footerAddValue.value ?? '').trim())
 const footerEditTrimmed = computed(() => String(footerEditValue.value ?? '').trim())
 
 const canSaveIntroAdd = computed(() => Boolean(introAddTrimmed.value))
 const canSaveIntroEdit = computed(() => Boolean(introEditId.value) && Boolean(introEditTrimmed.value))
+
+const canSaveIntroProductsAdd = computed(() => Boolean(introProductsAddTrimmed.value))
+const canSaveIntroProductsEdit = computed(() => Boolean(introProductsEditId.value) && Boolean(introProductsEditTrimmed.value))
+
+const canSaveIntroDiscountAdd = computed(() => Boolean(introDiscountAddTrimmed.value))
+const canSaveIntroDiscountEdit = computed(() => Boolean(introDiscountEditId.value) && Boolean(introDiscountEditTrimmed.value))
+
+const canSaveIntroContactAdd = computed(() => Boolean(introContactAddTrimmed.value))
+const canSaveIntroContactEdit = computed(() => Boolean(introContactEditId.value) && Boolean(introContactEditTrimmed.value))
 
 const canSaveFooterAdd = computed(() => Boolean(footerAddTrimmed.value))
 const canSaveFooterEdit = computed(() => Boolean(footerEditId.value) && Boolean(footerEditTrimmed.value))
@@ -218,16 +278,22 @@ async function refresh() {
   loading.value = true
   error.value = ''
   try {
-    const [cats, prods, intro, footer, msgs] = await Promise.all([
+    const [cats, prods, intro, introProds, introDisc, introCont, footer, msgs] = await Promise.all([
       listCategories(),
       listProducts(),
       listIntroTexts(),
+      listIntroProductsTexts(),
+      listIntroDiscountTexts(),
+      listIntroContactTexts(),
       listFooterTexts(),
       listMessages(),
     ])
     categories.value = cats
     products.value = prods
     introTexts.value = intro
+    introProductsTexts.value = introProds
+    introDiscountTexts.value = introDisc
+    introContactTexts.value = introCont
     footerTexts.value = footer
     messages.value = msgs
     introAddOpen.value = false
@@ -236,6 +302,27 @@ async function refresh() {
     introEditValue.value = ''
     introAddTouched.value = false
     introEditTouched.value = false
+
+    introProductsAddOpen.value = false
+    introProductsAddValue.value = ''
+    introProductsEditId.value = ''
+    introProductsEditValue.value = ''
+    introProductsAddTouched.value = false
+    introProductsEditTouched.value = false
+
+    introDiscountAddOpen.value = false
+    introDiscountAddValue.value = ''
+    introDiscountEditId.value = ''
+    introDiscountEditValue.value = ''
+    introDiscountAddTouched.value = false
+    introDiscountEditTouched.value = false
+
+    introContactAddOpen.value = false
+    introContactAddValue.value = ''
+    introContactEditId.value = ''
+    introContactEditValue.value = ''
+    introContactAddTouched.value = false
+    introContactEditTouched.value = false
 
     footerAddOpen.value = false
     footerAddValue.value = ''
@@ -485,7 +572,7 @@ async function saveCategory() {
   await Promise.all(linkOps)
 
   categoryEditOpen.value = false
-  showSuccess('Categoria a fost salvată')
+  showSuccess('Categoria a fost salvată.')
   await refresh()
   } catch (e) {
     error.value = e?.message || String(e)
@@ -551,7 +638,7 @@ async function saveProduct() {
   }
 
   productEditOpen.value = false
-  showSuccess('Produsul a fost salvat')
+  showSuccess('Produsul a fost salvat.')
   await refresh()
   } catch (e) {
     error.value = e?.message || String(e)
@@ -609,8 +696,10 @@ async function saveIntroAdd() {
     if (!canSaveIntroAdd.value) return
     await addIntroText(introAddTrimmed.value)
     await refresh()
+    showSuccess('Textul a fost salvat.')
   } catch (e) {
     error.value = e?.message || String(e)
+    showError()
   }
 }
 
@@ -636,8 +725,10 @@ async function saveIntroEdit(itemId) {
     const current = introTexts.value.find((x) => String(x?.id) === String(itemId))
     await updateIntroText(itemId, introEditTrimmed.value, current?.rank)
     await refresh()
+    showSuccess('Textul a fost salvat.')
   } catch (e) {
     error.value = e?.message || String(e)
+    showError()
   }
 }
 
@@ -683,6 +774,264 @@ function startFooterAdd() {
   footerEditTouched.value = false
 }
 
+function startIntroProductsAdd() {
+  introProductsAddOpen.value = true
+  introProductsAddValue.value = ''
+  introProductsEditId.value = ''
+  introProductsEditValue.value = ''
+  introProductsAddTouched.value = false
+  introProductsEditTouched.value = false
+}
+
+function cancelIntroProductsAdd() {
+  introProductsAddOpen.value = false
+  introProductsAddValue.value = ''
+  introProductsAddTouched.value = false
+}
+
+async function saveIntroProductsAdd() {
+  error.value = ''
+  try {
+    introProductsAddTouched.value = true
+    if (!canSaveIntroProductsAdd.value) return
+    await addIntroProductsText(introProductsAddTrimmed.value)
+    await refresh()
+    showSuccess('Textul a fost salvat.')
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError()
+  }
+}
+
+function startIntroProductsEdit(item) {
+  introProductsEditId.value = String(item?.id || '')
+  introProductsEditValue.value = String(item?.text || '')
+  introProductsAddOpen.value = false
+  introProductsAddValue.value = ''
+  introProductsEditTouched.value = false
+}
+
+function cancelIntroProductsEdit() {
+  introProductsEditId.value = ''
+  introProductsEditValue.value = ''
+  introProductsEditTouched.value = false
+}
+
+async function saveIntroProductsEdit(itemId) {
+  error.value = ''
+  try {
+    introProductsEditTouched.value = true
+    if (!canSaveIntroProductsEdit.value) return
+    const current = introProductsTexts.value.find((x) => String(x?.id) === String(itemId))
+    await updateIntroProductsText(itemId, introProductsEditTrimmed.value, current?.rank)
+    await refresh()
+    showSuccess('Textul a fost salvat.')
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError()
+  }
+}
+
+async function removeIntroProducts(itemId) {
+  error.value = ''
+  try {
+    await deleteIntroProductsText(itemId)
+    await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+		throw e
+  }
+}
+
+async function persistIntroProductsOrder() {
+  if (!rtdb) return
+  error.value = ''
+  introProductsEditId.value = ''
+  introProductsEditValue.value = ''
+  introProductsEditTouched.value = false
+  introProductsAddOpen.value = false
+  introProductsAddValue.value = ''
+  introProductsAddTouched.value = false
+  introProductsTexts.value = introProductsTexts.value.map((t, idx) => ({ ...t, rank: idx }))
+  try {
+    await saveIntroProductsRanks(introProductsTexts.value)
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+}
+
+function startIntroDiscountAdd() {
+  introDiscountAddOpen.value = true
+  introDiscountAddValue.value = ''
+  introDiscountEditId.value = ''
+  introDiscountEditValue.value = ''
+  introDiscountAddTouched.value = false
+  introDiscountEditTouched.value = false
+}
+
+function cancelIntroDiscountAdd() {
+  introDiscountAddOpen.value = false
+  introDiscountAddValue.value = ''
+  introDiscountAddTouched.value = false
+}
+
+async function saveIntroDiscountAdd() {
+  error.value = ''
+  try {
+    introDiscountAddTouched.value = true
+    if (!canSaveIntroDiscountAdd.value) return
+    await addIntroDiscountText(introDiscountAddTrimmed.value)
+    await refresh()
+    showSuccess('Textul a fost salvat.')
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError()
+  }
+}
+
+function startIntroDiscountEdit(item) {
+  introDiscountEditId.value = String(item?.id || '')
+  introDiscountEditValue.value = String(item?.text || '')
+  introDiscountAddOpen.value = false
+  introDiscountAddValue.value = ''
+  introDiscountEditTouched.value = false
+}
+
+function cancelIntroDiscountEdit() {
+  introDiscountEditId.value = ''
+  introDiscountEditValue.value = ''
+  introDiscountEditTouched.value = false
+}
+
+async function saveIntroDiscountEdit(itemId) {
+  error.value = ''
+  try {
+    introDiscountEditTouched.value = true
+    if (!canSaveIntroDiscountEdit.value) return
+    const current = introDiscountTexts.value.find((x) => String(x?.id) === String(itemId))
+    await updateIntroDiscountText(itemId, introDiscountEditTrimmed.value, current?.rank)
+    await refresh()
+    showSuccess('Textul a fost salvat.')
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError()
+  }
+}
+
+async function removeIntroDiscount(itemId) {
+  error.value = ''
+  try {
+    await deleteIntroDiscountText(itemId)
+    await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+		throw e
+  }
+}
+
+async function persistIntroDiscountOrder() {
+  if (!rtdb) return
+  error.value = ''
+  introDiscountEditId.value = ''
+  introDiscountEditValue.value = ''
+  introDiscountEditTouched.value = false
+  introDiscountAddOpen.value = false
+  introDiscountAddValue.value = ''
+  introDiscountAddTouched.value = false
+  introDiscountTexts.value = introDiscountTexts.value.map((t, idx) => ({ ...t, rank: idx }))
+  try {
+    await saveIntroDiscountRanks(introDiscountTexts.value)
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+}
+
+function startIntroContactAdd() {
+  introContactAddOpen.value = true
+  introContactAddValue.value = ''
+  introContactEditId.value = ''
+  introContactEditValue.value = ''
+  introContactAddTouched.value = false
+  introContactEditTouched.value = false
+}
+
+function cancelIntroContactAdd() {
+  introContactAddOpen.value = false
+  introContactAddValue.value = ''
+  introContactAddTouched.value = false
+}
+
+async function saveIntroContactAdd() {
+  error.value = ''
+  try {
+    introContactAddTouched.value = true
+    if (!canSaveIntroContactAdd.value) return
+    await addIntroContactText(introContactAddTrimmed.value)
+    await refresh()
+    showSuccess('Textul a fost salvat.')
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError()
+  }
+}
+
+function startIntroContactEdit(item) {
+  introContactEditId.value = String(item?.id || '')
+  introContactEditValue.value = String(item?.text || '')
+  introContactAddOpen.value = false
+  introContactAddValue.value = ''
+  introContactEditTouched.value = false
+}
+
+function cancelIntroContactEdit() {
+  introContactEditId.value = ''
+  introContactEditValue.value = ''
+  introContactEditTouched.value = false
+}
+
+async function saveIntroContactEdit(itemId) {
+  error.value = ''
+  try {
+    introContactEditTouched.value = true
+    if (!canSaveIntroContactEdit.value) return
+    const current = introContactTexts.value.find((x) => String(x?.id) === String(itemId))
+    await updateIntroContactText(itemId, introContactEditTrimmed.value, current?.rank)
+    await refresh()
+    showSuccess('Textul a fost salvat.')
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError()
+  }
+}
+
+async function removeIntroContact(itemId) {
+  error.value = ''
+  try {
+    await deleteIntroContactText(itemId)
+    await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+		throw e
+  }
+}
+
+async function persistIntroContactOrder() {
+  if (!rtdb) return
+  error.value = ''
+  introContactEditId.value = ''
+  introContactEditValue.value = ''
+  introContactEditTouched.value = false
+  introContactAddOpen.value = false
+  introContactAddValue.value = ''
+  introContactAddTouched.value = false
+  introContactTexts.value = introContactTexts.value.map((t, idx) => ({ ...t, rank: idx }))
+  try {
+    await saveIntroContactRanks(introContactTexts.value)
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+}
+
 function cancelFooterAdd() {
   footerAddOpen.value = false
   footerAddValue.value = ''
@@ -696,8 +1045,10 @@ async function saveFooterAdd() {
     if (!canSaveFooterAdd.value) return
     await addFooterText(footerAddTrimmed.value)
     await refresh()
+    showSuccess('Textul a fost salvat.')
   } catch (e) {
     error.value = e?.message || String(e)
+    showError()
   }
 }
 
@@ -723,8 +1074,10 @@ async function saveFooterEdit(itemId) {
     const current = footerTexts.value.find((x) => String(x?.id) === String(itemId))
     await updateFooterText(itemId, footerEditTrimmed.value, current?.rank)
     await refresh()
+    showSuccess('Textul a fost salvat.')
   } catch (e) {
     error.value = e?.message || String(e)
+    showError()
   }
 }
 
@@ -946,7 +1299,7 @@ async function persistFooterOrder() {
 
       <section class="stack">
         <div class="row sp-between">
-          <h2 class="sectionTitle">Texte de introducere site</h2>
+          <h2 class="sectionTitle">Texte - Acasă</h2>
           <div class="row" style="gap: .25rem;">
             <span class="pill">{{ introTexts.length }} texte</span>
             <v-btn
@@ -1018,7 +1371,7 @@ async function persistFooterOrder() {
                         :error-messages="introEditTouched && !introEditTrimmed ? introRequiredError : ''"
                         @blur="introEditTouched = true"
                       />
-                      <div class="row d-flex justify-end mt-4">
+                      <div class="row d-flex justify-end">
                         <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroEdit">Renunță</v-btn>
                         <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroEdit" @click="saveIntroEdit(t.id)">Salvează</v-btn>
                       </div>
@@ -1026,13 +1379,13 @@ async function persistFooterOrder() {
 
                     <div v-else class="stack">
                       <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
-                      <div class="row d-flex justify-end mt-4">
+                      <div class="row d-flex justify-end">
                         <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroEdit(t)">Editează text</v-btn>
                         <v-btn
                           :size="actionBtnSize"
                           variant="outlined"
                           color="red"
-                          @click="askConfirmWithSuccess({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeIntro(t.id), successMessage: 'Elementul a fost șters.' })"
+                          @click="askConfirmWithSuccess({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeIntro(t.id), successMessage: 'Textul a fost șters.' })"
                         >
                           Șterge text
                         </v-btn>
@@ -1049,9 +1402,321 @@ async function persistFooterOrder() {
 
       <div class="divider" />
 
+    <section class="stack">
+      <div class="row sp-between">
+        <h2 class="sectionTitle">Texte - Produse</h2>
+        <div class="row" style="gap: .25rem;">
+          <span class="pill">{{ introProductsTexts.length }} texte</span>
+          <v-btn
+            :size="actionBtnSize"
+            variant="text"
+            :icon="chevronFor(introProductsSectionOpen)"
+            @click="introProductsSectionOpen = !introProductsSectionOpen"
+          />
+        </div>
+      </div>
+
+      <v-expand-transition>
+        <div v-show="introProductsSectionOpen" class="stack">
+          <div v-if="!rtdb" class="card">
+            <strong>Eroare</strong>
+            <p class="muted">Realtime Database nu este configurat.</p>
+          </div>
+
+          <template v-else>
+            <div class="row d-flex justify-end">
+              <v-btn v-if="!introProductsAddOpen" color="cyan" variant="flat" :size="actionBtnSize" @click="startIntroProductsAdd">
+                Adaugă text nou
+              </v-btn>
+            </div>
+
+            <div class="card" v-if="introProductsAddOpen">
+              <div class="stack">
+                <v-text-field
+                  v-model="introProductsAddValue"
+                  label="Text nou *"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  autocomplete="off"
+                  :error="introProductsAddTouched && !introProductsAddTrimmed"
+                  :error-messages="introProductsAddTouched && !introProductsAddTrimmed ? introRequiredError : ''"
+                  @blur="introProductsAddTouched = true"
+                />
+                <div class="row d-flex justify-end">
+                  <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroProductsAdd">Renunță</v-btn>
+                  <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroProductsAdd" @click="saveIntroProductsAdd">Salvează</v-btn>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="introProductsTexts.length === 0" class="card">
+              <strong>Nu există texte încă.</strong>
+              <p class="muted">Adaugă primul text și va apărea pe pagina Produse.</p>
+            </div>
+
+            <draggable
+              v-model="introProductsTexts"
+              item-key="id"
+              :delay="300"
+              :delay-on-touch-only="true"
+              @end="persistIntroProductsOrder"
+            >
+              <template #item="{ element: t }">
+                <div class="card mb-2">
+                  <div v-if="introProductsEditId === String(t.id)" class="stack">
+                    <v-text-field
+                      v-model="introProductsEditValue"
+                      label="Text *"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      autocomplete="off"
+                      :error="introProductsEditTouched && !introProductsEditTrimmed"
+                      :error-messages="introProductsEditTouched && !introProductsEditTrimmed ? introRequiredError : ''"
+                      @blur="introProductsEditTouched = true"
+                    />
+                    <div class="row d-flex justify-end">
+                      <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroProductsEdit">Renunță</v-btn>
+                      <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroProductsEdit" @click="saveIntroProductsEdit(t.id)">Salvează</v-btn>
+                    </div>
+                  </div>
+
+                  <div v-else class="stack">
+                    <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
+                    <div class="row d-flex justify-end">
+                      <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroProductsEdit(t)">Editează text</v-btn>
+                      <v-btn
+                        :size="actionBtnSize"
+                        variant="outlined"
+                        color="red"
+                        @click="askConfirmWithSuccess({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeIntroProducts(t.id), successMessage: 'Textul a fost șters.' })"
+                      >
+                        Șterge text
+                      </v-btn>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </draggable>
+          </template>
+        </div>
+      </v-expand-transition>
+    </section>
+
+    <div class="divider" />
+
+    <section class="stack">
+      <div class="row sp-between">
+        <h2 class="sectionTitle">Texte - Reduceri</h2>
+        <div class="row" style="gap: .25rem;">
+          <span class="pill">{{ introDiscountTexts.length }} texte</span>
+          <v-btn
+            :size="actionBtnSize"
+            variant="text"
+            :icon="chevronFor(introDiscountSectionOpen)"
+            @click="introDiscountSectionOpen = !introDiscountSectionOpen"
+          />
+        </div>
+      </div>
+
+      <v-expand-transition>
+        <div v-show="introDiscountSectionOpen" class="stack">
+          <div v-if="!rtdb" class="card">
+            <strong>Eroare</strong>
+            <p class="muted">Realtime Database nu este configurat.</p>
+          </div>
+
+          <template v-else>
+            <div class="row d-flex justify-end">
+              <v-btn v-if="!introDiscountAddOpen" color="cyan" variant="flat" :size="actionBtnSize" @click="startIntroDiscountAdd">
+                Adaugă text nou
+              </v-btn>
+            </div>
+
+            <div class="card" v-if="introDiscountAddOpen">
+              <div class="stack">
+                <v-text-field
+                  v-model="introDiscountAddValue"
+                  label="Text nou *"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  autocomplete="off"
+                  :error="introDiscountAddTouched && !introDiscountAddTrimmed"
+                  :error-messages="introDiscountAddTouched && !introDiscountAddTrimmed ? introRequiredError : ''"
+                  @blur="introDiscountAddTouched = true"
+                />
+                <div class="row d-flex justify-end">
+                  <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroDiscountAdd">Renunță</v-btn>
+                  <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroDiscountAdd" @click="saveIntroDiscountAdd">Salvează</v-btn>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="introDiscountTexts.length === 0" class="card">
+              <strong>Nu există texte încă.</strong>
+              <p class="muted">Adaugă primul text și va apărea pe pagina Reduceri.</p>
+            </div>
+
+            <draggable
+              v-model="introDiscountTexts"
+              item-key="id"
+              :delay="300"
+              :delay-on-touch-only="true"
+              @end="persistIntroDiscountOrder"
+            >
+              <template #item="{ element: t }">
+                <div class="card mb-2">
+                  <div v-if="introDiscountEditId === String(t.id)" class="stack">
+                    <v-text-field
+                      v-model="introDiscountEditValue"
+                      label="Text *"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      autocomplete="off"
+                      :error="introDiscountEditTouched && !introDiscountEditTrimmed"
+                      :error-messages="introDiscountEditTouched && !introDiscountEditTrimmed ? introRequiredError : ''"
+                      @blur="introDiscountEditTouched = true"
+                    />
+                    <div class="row d-flex justify-end">
+                      <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroDiscountEdit">Renunță</v-btn>
+                      <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroDiscountEdit" @click="saveIntroDiscountEdit(t.id)">Salvează</v-btn>
+                    </div>
+                  </div>
+
+                  <div v-else class="stack">
+                    <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
+                    <div class="row d-flex justify-end">
+                      <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroDiscountEdit(t)">Editează text</v-btn>
+                      <v-btn
+                        :size="actionBtnSize"
+                        variant="outlined"
+                        color="red"
+                        @click="askConfirmWithSuccess({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeIntroDiscount(t.id), successMessage: 'Textul a fost șters.' })"
+                      >
+                        Șterge text
+                      </v-btn>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </draggable>
+          </template>
+        </div>
+      </v-expand-transition>
+    </section>
+
+    <div class="divider" />
+
+    <section class="stack">
+      <div class="row sp-between">
+        <h2 class="sectionTitle">Texte - Contact</h2>
+        <div class="row" style="gap: .25rem;">
+          <span class="pill">{{ introContactTexts.length }} texte</span>
+          <v-btn
+            :size="actionBtnSize"
+            variant="text"
+            :icon="chevronFor(introContactSectionOpen)"
+            @click="introContactSectionOpen = !introContactSectionOpen"
+          />
+        </div>
+      </div>
+
+      <v-expand-transition>
+        <div v-show="introContactSectionOpen" class="stack">
+          <div v-if="!rtdb" class="card">
+            <strong>Eroare</strong>
+            <p class="muted">Realtime Database nu este configurat.</p>
+          </div>
+
+          <template v-else>
+            <div class="row d-flex justify-end">
+              <v-btn v-if="!introContactAddOpen" color="cyan" variant="flat" :size="actionBtnSize" @click="startIntroContactAdd">
+                Adaugă text nou
+              </v-btn>
+            </div>
+
+            <div class="card" v-if="introContactAddOpen">
+              <div class="stack">
+                <v-text-field
+                  v-model="introContactAddValue"
+                  label="Text nou *"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  autocomplete="off"
+                  :error="introContactAddTouched && !introContactAddTrimmed"
+                  :error-messages="introContactAddTouched && !introContactAddTrimmed ? introRequiredError : ''"
+                  @blur="introContactAddTouched = true"
+                />
+                <div class="row d-flex justify-end">
+                  <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroContactAdd">Renunță</v-btn>
+                  <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroContactAdd" @click="saveIntroContactAdd">Salvează</v-btn>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="introContactTexts.length === 0" class="card">
+              <strong>Nu există texte încă.</strong>
+              <p class="muted">Adaugă primul text și va apărea pe pagina Contact.</p>
+            </div>
+
+            <draggable
+              v-model="introContactTexts"
+              item-key="id"
+              :delay="300"
+              :delay-on-touch-only="true"
+              @end="persistIntroContactOrder"
+            >
+              <template #item="{ element: t }">
+                <div class="card mb-2">
+                  <div v-if="introContactEditId === String(t.id)" class="stack">
+                    <v-text-field
+                      v-model="introContactEditValue"
+                      label="Text *"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      autocomplete="off"
+                      :error="introContactEditTouched && !introContactEditTrimmed"
+                      :error-messages="introContactEditTouched && !introContactEditTrimmed ? introRequiredError : ''"
+                      @blur="introContactEditTouched = true"
+                    />
+                    <div class="row d-flex justify-end">
+                      <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroContactEdit">Renunță</v-btn>
+                      <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroContactEdit" @click="saveIntroContactEdit(t.id)">Salvează</v-btn>
+                    </div>
+                  </div>
+
+                  <div v-else class="stack">
+                    <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
+                    <div class="row d-flex justify-end">
+                      <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroContactEdit(t)">Editează text</v-btn>
+                      <v-btn
+                        :size="actionBtnSize"
+                        variant="outlined"
+                        color="red"
+                        @click="askConfirmWithSuccess({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeIntroContact(t.id), successMessage: 'Textul a fost șters.' })"
+                      >
+                        Șterge text
+                      </v-btn>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </draggable>
+          </template>
+        </div>
+      </v-expand-transition>
+    </section>
+
+    <div class="divider" />
+
       <section class="stack">
         <div class="row sp-between">
-          <h2 class="sectionTitle">Texte footer</h2>
+          <h2 class="sectionTitle">Texte - Footer</h2>
           <div class="row" style="gap: .25rem;">
             <span class="pill">{{ footerTexts.length }} texte</span>
             <v-btn
@@ -1123,7 +1788,7 @@ async function persistFooterOrder() {
                         :error-messages="footerEditTouched && !footerEditTrimmed ? introRequiredError : ''"
                         @blur="footerEditTouched = true"
                       />
-                      <div class="row d-flex justify-end mt-4">
+                      <div class="row d-flex justify-end">
                         <v-btn :size="actionBtnSize" variant="text" @click="cancelFooterEdit">Renunță</v-btn>
                         <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveFooterEdit" @click="saveFooterEdit(t.id)">Salvează</v-btn>
                       </div>
@@ -1131,13 +1796,13 @@ async function persistFooterOrder() {
 
                     <div v-else class="stack">
                       <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
-                      <div class="row d-flex justify-end mt-4">
+                      <div class="row d-flex justify-end">
                         <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startFooterEdit(t)">Editează text</v-btn>
                         <v-btn
                           :size="actionBtnSize"
                           variant="outlined"
                           color="red"
-                          @click="askConfirmWithSuccess({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeFooter(t.id), successMessage: 'Elementul a fost șters.' })"
+                          @click="askConfirmWithSuccess({ title: 'Șterge textul', text: 'Sigur vrei să ștergi acest text?', action: () => removeFooter(t.id), successMessage: 'Textul a fost șters.' })"
                         >
                           Șterge text
                         </v-btn>
@@ -1325,6 +1990,7 @@ async function persistFooterOrder() {
   width: fit-content;
   min-width: 0;
   max-width: min(92vw, 720px);
+  margin: 0 10px 10px 0;
 }
 
 .snackbarFit :deep(.v-snackbar__content) {

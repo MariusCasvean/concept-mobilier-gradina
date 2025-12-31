@@ -16,32 +16,30 @@ const loading = ref(true)
 const error = ref('')
 
 const introTexts = ref([])
-
-const fallbackIntro = [
-  'Dispunem de o gamă variată de produse!',
-  'Orice produs este unicat, realizat cu măiestrie și dragoste. Putem executa la comandă orice componentă care va da viață grădinii, după preferințele și necesitățile tale.',
-  'Nu ezita să ne contactezi pentru consultanță și mai multe detalii despre produse sau cum poți plasa o comandă! Vei vedea că este foarte simplu și în cel mai scurt timp posibil, produsul dorit va ajunge la tine și te vei bucura de el.',
-]
+const introLoading = ref(Boolean(rtdb))
 
 const introLines = computed(() => {
-  if (!rtdb) return fallbackIntro
-  const lines = introTexts.value.map((x) => String(x?.text || '').trim()).filter(Boolean)
-  return lines.length ? lines : fallbackIntro
+  if (introLoading.value) return []
+  return introTexts.value.map((x) => String(x?.text || '').trim()).filter(Boolean)
 })
 
 const featuredProducts = computed(() => products.value.slice(0, 6))
 
 onMounted(async () => {
   try {
-    const [prods, intro] = await Promise.all([
+    const [prodsRes, introRes] = await Promise.allSettled([
       listProducts(),
       listIntroTexts(),
     ])
-    products.value = prods
-    introTexts.value = intro
+
+    if (prodsRes.status === 'fulfilled') products.value = prodsRes.value
+    else throw prodsRes.reason
+
+    if (introRes.status === 'fulfilled') introTexts.value = introRes.value
   } catch (e) {
     error.value = e?.message || String(e)
   } finally {
+    introLoading.value = false
     loading.value = false
   }
 })

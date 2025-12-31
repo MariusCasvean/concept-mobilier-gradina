@@ -5,7 +5,7 @@ import ProductCard from '../components/ui/ProductCard.vue'
 import PageLoader from '../components/ui/PageLoader.vue'
 import { rtdb } from '../lib/firebase'
 import { useSiteStore } from '../stores/site'
-import { listCategories, listDiscountProducts } from '../services/productsService'
+import { listCategories, listDiscountProducts, listIntroDiscountTexts } from '../services/productsService'
 
 const site = useSiteStore()
 const add = () => site.incrementCart()
@@ -14,6 +14,14 @@ const loading = ref(true)
 const error = ref('')
 const categories = ref([])
 const products = ref([])
+
+const introTexts = ref([])
+const introLoading = ref(true)
+
+const introLines = computed(() => {
+  if (introLoading.value) return []
+  return introTexts.value.map((x) => String(x?.text || '').trim()).filter(Boolean)
+})
 
 const detailsOpen = ref(false)
 const selectedProduct = ref(null)
@@ -66,14 +74,17 @@ onMounted(async () => {
       categories.value = []
       products.value = []
       error.value = 'Pagina de Reduceri nu este disponibilă fără baza de date configurată.'
+      introLoading.value = false
       return
     }
-    const [cats, prods] = await Promise.all([listCategories(), listDiscountProducts()])
+    const [cats, prods, intro] = await Promise.all([listCategories(), listDiscountProducts(), listIntroDiscountTexts()])
     categories.value = cats
     products.value = prods
+    introTexts.value = intro
   } catch (e) {
     error.value = e?.message || String(e)
   } finally {
+    introLoading.value = false
     loading.value = false
   }
 })
@@ -82,7 +93,9 @@ onMounted(async () => {
 <template>
   <div class="stack-lg">
     <h1>Reduceri</h1>
-    <p class="muted">Oferte limitate la mobilierul de exterior selectat.</p>
+    <div class="stack" style="gap: .35rem;">
+      <p v-for="(t, idx) in introLines" :key="idx" class="muted">{{ t }}</p>
+    </div>
 
     <PageLoader v-if="loading" />
 

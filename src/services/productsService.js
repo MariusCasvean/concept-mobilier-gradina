@@ -99,13 +99,149 @@ function normalizeMessages(val) {
 }
 
 export async function listIntroTexts() {
+  // Home page intro texts
+  return listTextNode('introHome')
+}
+
+async function listTextNode(node) {
   if (!rtdb) {
     await sleep(40)
     return []
   }
-
-  const snap = await get(dbRef(rtdb, 'intro'))
+  const cleanNode = String(node || '').trim()
+  if (!cleanNode) return []
+  const snap = await get(dbRef(rtdb, cleanNode))
   return normalizeStringList(snap.exists() ? snap.val() : null)
+}
+
+async function addTextNode(node, text) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const cleanNode = String(node || '').trim()
+  const clean = String(text ?? '').trim()
+  if (!cleanNode) throw new Error('Nod invalid.')
+  if (!clean) throw new Error('Textul este obligatoriu.')
+
+  const existingSnap = await get(dbRef(rtdb, cleanNode))
+  const existing = normalizeStringList(existingSnap.exists() ? existingSnap.val() : null)
+  const maxRank = existing.reduce((m, item) => {
+    const r = Number(item?.rank)
+    return Number.isFinite(r) ? Math.max(m, r) : m
+  }, -1)
+  const rank = maxRank + 1
+
+  const nodeRef = push(dbRef(rtdb, cleanNode))
+  const id = String(nodeRef.key || '')
+  if (!id) throw new Error('Nu am putut genera ID pentru text.')
+  await set(nodeRef, { text: clean, rank })
+  return { id, text: clean, rank }
+}
+
+async function updateTextNode(node, id, text, rank) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const cleanNode = String(node || '').trim()
+  const cleanId = String(id ?? '').trim()
+  const cleanText = String(text ?? '').trim()
+  if (!cleanNode) throw new Error('Nod invalid.')
+  if (!cleanId) throw new Error('ID invalid.')
+  if (!cleanText) throw new Error('Textul este obligatoriu.')
+
+  let finalRank = Number(rank)
+  if (!Number.isFinite(finalRank)) {
+    const snap = await get(dbRef(rtdb, `${cleanNode}/${cleanId}`))
+    const val = snap.exists() ? snap.val() : null
+    const r = val && typeof val === 'object' ? Number(val.rank) : NaN
+    finalRank = Number.isFinite(r) ? r : 0
+  }
+
+  await set(dbRef(rtdb, `${cleanNode}/${cleanId}`), { text: cleanText, rank: finalRank })
+  return { id: cleanId, text: cleanText, rank: finalRank }
+}
+
+async function deleteTextNode(node, id) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const cleanNode = String(node || '').trim()
+  const cleanId = String(id ?? '').trim()
+  if (!cleanNode) throw new Error('Nod invalid.')
+  if (!cleanId) throw new Error('ID invalid.')
+  await remove(dbRef(rtdb, `${cleanNode}/${cleanId}`))
+}
+
+async function saveTextNodeRanks(node, items) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const cleanNode = String(node || '').trim()
+  if (!cleanNode) throw new Error('Nod invalid.')
+  if (!Array.isArray(items)) throw new Error('Lista de texte este invalidă.')
+
+  const payload = {}
+  for (let i = 0; i < items.length; i++) {
+    const id = String(items[i]?.id ?? '').trim()
+    const text = String(items[i]?.text ?? '').trim()
+    if (!id || !text) continue
+    payload[id] = { text, rank: i }
+  }
+
+  await update(dbRef(rtdb, cleanNode), payload)
+}
+
+// Intro texts for specific pages
+export async function listIntroProductsTexts() {
+  return listTextNode('introProducts')
+}
+
+export async function listIntroDiscountTexts() {
+  return listTextNode('introDiscount')
+}
+
+export async function listIntroContactTexts() {
+  return listTextNode('introContact')
+}
+
+export async function addIntroProductsText(text) {
+  return addTextNode('introProducts', text)
+}
+
+export async function addIntroDiscountText(text) {
+  return addTextNode('introDiscount', text)
+}
+
+export async function addIntroContactText(text) {
+  return addTextNode('introContact', text)
+}
+
+export async function updateIntroProductsText(id, text, rank) {
+  return updateTextNode('introProducts', id, text, rank)
+}
+
+export async function updateIntroDiscountText(id, text, rank) {
+  return updateTextNode('introDiscount', id, text, rank)
+}
+
+export async function updateIntroContactText(id, text, rank) {
+  return updateTextNode('introContact', id, text, rank)
+}
+
+export async function deleteIntroProductsText(id) {
+  return deleteTextNode('introProducts', id)
+}
+
+export async function deleteIntroDiscountText(id) {
+  return deleteTextNode('introDiscount', id)
+}
+
+export async function deleteIntroContactText(id) {
+  return deleteTextNode('introContact', id)
+}
+
+export async function saveIntroProductsRanks(items) {
+  return saveTextNodeRanks('introProducts', items)
+}
+
+export async function saveIntroDiscountRanks(items) {
+  return saveTextNodeRanks('introDiscount', items)
+}
+
+export async function saveIntroContactRanks(items) {
+  return saveTextNodeRanks('introContact', items)
 }
 
 export async function listFooterTexts() {
@@ -180,24 +316,7 @@ export async function deleteMessage(id) {
 }
 
 export async function addIntroText(text) {
-  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
-  const clean = String(text ?? '').trim()
-  if (!clean) throw new Error('Textul este obligatoriu.')
-
-  const existingSnap = await get(dbRef(rtdb, 'intro'))
-  const existing = normalizeStringList(existingSnap.exists() ? existingSnap.val() : null)
-  const maxRank = existing.reduce((m, item) => {
-    const r = Number(item?.rank)
-    return Number.isFinite(r) ? Math.max(m, r) : m
-  }, -1)
-  const rank = maxRank + 1
-
-  const nodeRef = push(dbRef(rtdb, 'intro'))
-  const id = String(nodeRef.key || '')
-  if (!id) throw new Error('Nu am putut genera ID pentru text.')
-
-  await set(nodeRef, { text: clean, rank })
-  return { id, text: clean, rank }
+  return addTextNode('introHome', text)
 }
 
 export async function addFooterText(text) {
@@ -222,22 +341,7 @@ export async function addFooterText(text) {
 }
 
 export async function updateIntroText(id, text, rank) {
-  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
-  const cleanId = String(id ?? '').trim()
-  const cleanText = String(text ?? '').trim()
-  if (!cleanId) throw new Error('ID invalid.')
-  if (!cleanText) throw new Error('Textul este obligatoriu.')
-
-  let finalRank = Number(rank)
-  if (!Number.isFinite(finalRank)) {
-    const snap = await get(dbRef(rtdb, `intro/${cleanId}`))
-    const val = snap.exists() ? snap.val() : null
-    const r = val && typeof val === 'object' ? Number(val.rank) : NaN
-    finalRank = Number.isFinite(r) ? r : 0
-  }
-
-  await set(dbRef(rtdb, `intro/${cleanId}`), { text: cleanText, rank: finalRank })
-  return { id: cleanId, text: cleanText, rank: finalRank }
+  return updateTextNode('introHome', id, text, rank)
 }
 
 export async function updateFooterText(id, text, rank) {
@@ -260,10 +364,7 @@ export async function updateFooterText(id, text, rank) {
 }
 
 export async function deleteIntroText(id) {
-  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
-  const cleanId = String(id ?? '').trim()
-  if (!cleanId) throw new Error('ID invalid.')
-  await remove(dbRef(rtdb, `intro/${cleanId}`))
+  return deleteTextNode('introHome', id)
 }
 
 export async function deleteFooterText(id) {
@@ -274,18 +375,7 @@ export async function deleteFooterText(id) {
 }
 
 export async function saveIntroRanks(items) {
-  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
-  if (!Array.isArray(items)) throw new Error('Lista de texte este invalidă.')
-
-  const payload = {}
-  for (let i = 0; i < items.length; i++) {
-    const id = String(items[i]?.id ?? '').trim()
-    const text = String(items[i]?.text ?? '').trim()
-    if (!id || !text) continue
-    payload[id] = { text, rank: i }
-  }
-
-  await update(dbRef(rtdb, 'intro'), payload)
+  return saveTextNodeRanks('introHome', items)
 }
 
 export async function saveFooterRanks(items) {

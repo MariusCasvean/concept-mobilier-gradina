@@ -159,14 +159,14 @@ watch(categorySlug, load)
             <div class="v">{{ selectedProduct.description }}</div>
           </div>
 
-          <div class="kv" v-if="selectedProduct?.price">
+          <div class="kv" v-if="selectedProduct?.showProductPrice !== false && String(selectedProduct?.price || '').trim()">
             <div class="k muted">Preț</div>
             <div class="v">{{ selectedProduct.price }} RON</div>
           </div>
 
           <div
             class="kv"
-            v-if="selectedProduct?.showProductDiscount && String(selectedProduct?.reducedPrice || '').trim()"
+            v-if="selectedProduct?.showProductPrice !== false && selectedProduct?.showProductDiscount && String(selectedProduct?.reducedPrice || '').trim()"
           >
             <div class="k muted">Preț redus</div>
             <div class="v">

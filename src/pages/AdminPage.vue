@@ -247,6 +247,7 @@ const productForm = ref({
   description: '',
   price: '',
   reducedPrice: '',
+  showProductPrice: false,
   showProductDiscount: false,
   background: '#0b1220',
   image: '',
@@ -336,22 +337,21 @@ const isCategoryValid = computed(() => {
 
 const isProductValid = computed(() => {
   const p = productForm.value
+  const showPrice = Boolean(p?.showProductPrice)
+  const hasPrice = Boolean(String(p.price || '').trim())
+  const hasReduced = Boolean(String(p.reducedPrice || '').trim())
+  const discountOk = !Boolean(p.showProductDiscount) || !showPrice || (hasPrice && hasReduced)
   return (
     Boolean(String(p.title || '').trim()) &&
     Boolean(String(p.description || '').trim()) &&
-    Boolean(String(p.price || '').trim()) &&
+    (!showPrice || hasPrice) &&
+    discountOk &&
     productHasImage.value
   )
 })
 
-const canShowDiscountToggle = computed(() => {
-  const p = productForm.value
-  return Boolean(String(p.price || '').trim()) && Boolean(String(p.reducedPrice || '').trim())
-})
-
-watch(canShowDiscountToggle, (ok) => {
-  if (!ok) productForm.value.showProductDiscount = false
-})
+const isPriceRequired = computed(() => Boolean(productForm.value?.showProductPrice))
+const isReducedPriceRequired = computed(() => Boolean(productForm.value?.showProductPrice) && Boolean(productForm.value?.showProductDiscount))
 
 async function refresh() {
   loading.value = true
@@ -521,6 +521,7 @@ function openProductEdit(p) {
     description: p.description || '',
     price: p.price || '',
     reducedPrice: p.reducedPrice || '',
+    showProductPrice: p?.showProductPrice !== false,
     showProductDiscount: Boolean(p.showProductDiscount),
     background: p.background || '#0b1220',
     image: p.image || '',
@@ -537,6 +538,7 @@ function openProductCreate() {
     description: '',
     price: '',
     reducedPrice: '',
+    showProductPrice: false,
     showProductDiscount: false,
     background: '#0b1220',
     image: '',
@@ -711,7 +713,8 @@ async function saveProduct() {
     description: String(p.description || '').trim(),
     price: String(p.price || '').trim(),
     reducedPrice: String(p.reducedPrice || '').trim(),
-    showProductDiscount: Boolean(p.showProductDiscount) && canShowDiscountToggle.value,
+    showProductPrice: Boolean(p.showProductPrice),
+    showProductDiscount: Boolean(p.showProductDiscount),
     background: p.background || '#0b1220',
     image: p.image || '',
     updatedAt: Date.now(),
@@ -1542,8 +1545,8 @@ async function saveNewAdminPassword() {
                   <div class="row sp-between">
                     <strong class="name">{{ p.title }}</strong>
                     <div class="row prices">
-                      <span v-if="p.price" class="pill" :class="{ priceOld: p.reducedPrice }">{{ p.price }} RON</span>
-                      <span v-if="p.reducedPrice" class="pill priceNew">{{ p.reducedPrice }} RON</span>
+                      <span v-if="p.showProductPrice !== false && p.price" class="pill" :class="{ priceOld: p.reducedPrice }">{{ p.price }} RON</span>
+                      <span v-if="p.showProductPrice !== false && p.reducedPrice" class="pill priceNew">{{ p.reducedPrice }} RON</span>
                       <span v-if="p.showProductDiscount" class="pill discountPill">Reducere</span>
                     </div>
                   </div>
@@ -2470,15 +2473,37 @@ async function saveNewAdminPassword() {
         <v-card-text>
           <v-text-field v-model="productForm.title" label="Titlu *" variant="outlined" density="compact" autocomplete="off" :rules="[requiredRule]" />
           <v-textarea v-model="productForm.description" label="Descriere *" variant="outlined" density="compact" rows="3" autocomplete="off" :rules="[requiredRule]" />
-          <v-text-field v-model="productForm.price" label="Preț (RON) *" variant="outlined" density="compact" type="number" autocomplete="off" :rules="[requiredRule]" />
-          <v-text-field v-model="productForm.reducedPrice" label="Preț redus (RON)" variant="outlined" density="compact" type="number" autocomplete="off" />
+          <v-text-field
+            v-model="productForm.price"
+            :label="isPriceRequired ? 'Preț (RON) *' : 'Preț (RON)'"
+            variant="outlined"
+            density="compact"
+            type="number"
+            autocomplete="off"
+            :rules="isPriceRequired ? [requiredRule] : []"
+          />
+          <v-text-field
+            v-model="productForm.reducedPrice"
+            :label="isReducedPriceRequired ? 'Preț redus (RON) *' : 'Preț redus (RON)'"
+            variant="outlined"
+            density="compact"
+            type="number"
+            autocomplete="off"
+            :rules="isReducedPriceRequired ? [requiredRule] : []"
+          />
           <v-checkbox
             v-model="productForm.showProductDiscount"
-            class="mt-n2 mb-4"
-            :disabled="!canShowDiscountToggle"
+            class="mt-n2 mb-2"
             density="compact"
             hide-details
             label="Afișează în pagina de Reduceri"
+          />
+          <v-checkbox
+            v-model="productForm.showProductPrice"
+            class="mt-n2 mb-4"
+            density="compact"
+            hide-details
+            label="Afișează prețul produsului"
           />
           <v-text-field v-model="productForm.background" label="Fundal" variant="outlined" density="compact" type="color" autocomplete="off" />
           <ImageUploadField ref="productImageFieldRef" v-model="productForm.image" folder="products" :entity-id="productForm.id" store-as="storage" label="Imagine produs *" />

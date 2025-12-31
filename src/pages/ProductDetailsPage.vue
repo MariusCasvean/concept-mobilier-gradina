@@ -58,7 +58,7 @@ watch(() => `${categorySlug.value}/${productSlug.value}`, load)
             <strong class="name">{{ product?.title }}</strong>
             <span class="muted">Categoria: {{ product?.categoryName || categorySlug }}</span>
           </div>
-          <span class="pill price">{{ product?.price }} RON</span>
+          <span v-if="product?.showProductPrice !== false && String(product?.price || '').trim()" class="pill price">{{ product?.price }} RON</span>
         </div>
 
         <p class="muted">{{ product?.description }}</p>

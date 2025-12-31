@@ -50,7 +50,7 @@ const selectedCategoryTitle = computed(() => {
 
 const discounted = computed(() => {
   return products.value
-    .filter((p) => Boolean(p?.showProductDiscount) && String(p?.price || '').trim() && String(p?.reducedPrice || '').trim())
+    .filter((p) => Boolean(p?.showProductDiscount))
     .map((p) => ({
       ...p,
       categorySlug: p.categorySlug || categorySlugById.value.get(String(p.categoryId || '')) || '',
@@ -118,6 +118,7 @@ onMounted(async () => {
         :title="p.title"
         :description="p.description"
         :image="p.image"
+        :show-price="p?.showProductPrice !== false"
         :price="String(p.price || '')"
         :reduced-price="String(p.reducedPrice || '')"
         :category-slug="p.categorySlug"
@@ -147,14 +148,14 @@ onMounted(async () => {
             <div class="v">{{ selectedProduct.description }}</div>
           </div>
 
-          <div class="kv" v-if="selectedProduct?.price">
+          <div class="kv" v-if="selectedProduct?.showProductPrice !== false && String(selectedProduct?.price || '').trim()">
             <div class="k muted">Preț</div>
             <div class="v">{{ selectedProduct.price }} RON</div>
           </div>
 
           <div
             class="kv"
-            v-if="selectedProduct?.showProductDiscount && String(selectedProduct?.reducedPrice || '').trim()"
+            v-if="selectedProduct?.showProductPrice !== false && selectedProduct?.showProductDiscount && String(selectedProduct?.reducedPrice || '').trim()"
           >
             <div class="k muted">Preț redus</div>
             <div class="v">

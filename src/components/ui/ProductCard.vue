@@ -7,6 +7,7 @@ const props = defineProps({
   title: String,
   price: String,
   reducedPrice: String,
+  showPrice: { type: Boolean, default: true },
   description: String,
   image: String,
   slug: String,
@@ -30,7 +31,9 @@ const isCardClickable = computed(() => props.cardClickable !== false)
 const isCtaLink = computed(() => props.ctaBehavior !== 'emit')
 
 const isDiscount = computed(() => props.variant === 'discount')
-const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim()))
+const shouldShowPrice = computed(() => props.showPrice !== false)
+const hasPrice = computed(() => shouldShowPrice.value && Boolean(String(props.price || '').trim()))
+const hasReduced = computed(() => hasPrice.value && Boolean(String(props.reducedPrice || '').trim()))
 </script>
 
 <template>
@@ -45,7 +48,7 @@ const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim(
           <span class="oldPrice">{{ price }} RON</span>
           <span class="newPrice">{{ reducedPrice }} RON</span>
         </span>
-        <span v-else class="pill">{{ price }} RON</span>
+        <span v-else-if="hasPrice" class="pill">{{ price }} RON</span>
       </header>
       <p class="muted desc">{{ description }}</p>
       <div class="actions">

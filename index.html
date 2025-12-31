@@ -8,6 +8,21 @@
     <meta name="description" content="Modern garden furniture concepts and discounts." />
   <!-- MDI Webfont via CDN for Vuetify v-icon -->
   <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
+
+    <script>
+      // GitHub Pages SPA fallback:
+      // 404.html saves the requested URL in sessionStorage and redirects to '/'.
+      // This restores the URL so Vue Router (history mode) can render the correct route.
+      (function () {
+        try {
+          var redirect = sessionStorage.getItem('spa:redirect')
+          if (redirect) {
+            sessionStorage.removeItem('spa:redirect')
+            history.replaceState(null, '', redirect)
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>

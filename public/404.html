@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecting…</title>
+    <script>
+      // GitHub Pages serves 404.html for unknown routes.
+      // Save the intended path and redirect to '/', where index.html can restore it.
+      (function () {
+        try {
+          var fullPath = location.pathname + location.search + location.hash
+          sessionStorage.setItem('spa:redirect', fullPath)
+        } catch (e) {}
+        location.replace('/')
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>

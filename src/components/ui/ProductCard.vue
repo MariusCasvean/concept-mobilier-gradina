@@ -45,11 +45,11 @@ const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim(
         </span>
         <span v-else class="pill">{{ price }} RON</span>
       </header>
-      <p class="muted">{{ description }}</p>
+      <p class="muted desc">{{ description }}</p>
       <div class="actions">
         <v-btn
           v-if="isCtaLink"
-          class="cta"
+          class="cta mt-2"
           :size="ctaBtnSize"
           :to="cardTo"
         >
@@ -57,7 +57,7 @@ const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim(
         </v-btn>
         <v-btn
           v-else
-          class="cta"
+          class="cta mt-2"
           :size="ctaBtnSize"
           @click="emit('details')"
         >
@@ -71,6 +71,9 @@ const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim(
 
 <style scoped>
 .product {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   overflow: hidden;
   text-decoration: none;
 }
@@ -93,8 +96,18 @@ const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim(
     linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
 }
 .info {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: .5rem;
+}
+.desc {
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
 }
 .prices {
   display: inline-flex;
@@ -119,6 +132,7 @@ const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim(
   gap: .75rem;
   justify-content: flex-end;
   flex-wrap: wrap;
+  margin-top: auto;
 }
 .cta {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));

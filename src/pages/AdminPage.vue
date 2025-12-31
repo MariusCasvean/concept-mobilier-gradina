@@ -922,7 +922,7 @@ async function persistFooterOrder() {
                     <span class="muted"><strong>Categorie:</strong> {{ getCategoryTitleById(p.categoryId) }}</span>
                   </div>
                   <p class="muted desc" :class="{ placeholder: !p.description }"><strong>Descriere:</strong> {{ p.description || '' }}</p>
-                  <div class="row d-flex productActions mt-2">
+                  <div class="row d-flex productActions">
                     <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="openProductEdit(p)">
                       Editează produs
                     </v-btn>
@@ -1398,9 +1398,14 @@ async function persistFooterOrder() {
   border: 1px solid rgba(255,255,255,.06);
   border-left: 0.5rem solid transparent;
   border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 .productSimpleBody {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: .5rem;
 }
 .productSimpleMedia {
@@ -1408,6 +1413,8 @@ async function persistFooterOrder() {
 }
 .productActions {
   justify-content: flex-end;
+  margin-top: auto;
+  padding-top: .5rem;
 }
 .prices {
   justify-content: flex-end;
@@ -1500,8 +1507,8 @@ async function persistFooterOrder() {
 }
 .desc {
   display: -webkit-box;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin: 0;

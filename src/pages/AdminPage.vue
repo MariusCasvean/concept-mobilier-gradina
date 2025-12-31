@@ -10,15 +10,18 @@ import {
   addIntroContactText,
   addIntroDiscountText,
   addIntroProductsText,
+  addContactInfoItem,
   addFooterText,
   addIntroText,
   deleteMessage,
+  deleteContactInfoItem,
   deleteIntroContactText,
   deleteIntroDiscountText,
   deleteIntroProductsText,
   deleteFooterText,
   deleteIntroText,
   listCategories,
+  listContactInfo,
   listFooterTexts,
   listIntroContactTexts,
   listIntroDiscountTexts,
@@ -26,12 +29,14 @@ import {
   listIntroTexts,
   listMessages,
   listProducts,
+  saveContactInfoRanks,
   saveIntroContactRanks,
   saveIntroDiscountRanks,
   saveIntroProductsRanks,
   saveFooterRanks,
   saveIntroRanks,
   subscribeMessages,
+  updateContactInfoItem,
   updateIntroContactText,
   updateIntroDiscountText,
   updateIntroProductsText,
@@ -91,6 +96,17 @@ const footerEditTouched = ref(false)
 const messages = ref([])
 const messagesSectionOpen = ref(false)
 
+const contactInfoItems = ref([])
+const contactInfoSectionOpen = ref(false)
+const contactInfoAddOpen = ref(false)
+const contactInfoAddLabel = ref('')
+const contactInfoAddTexts = ref('')
+const contactInfoEditId = ref('')
+const contactInfoEditLabel = ref('')
+const contactInfoEditTexts = ref('')
+const contactInfoAddTouched = ref(false)
+const contactInfoEditTouched = ref(false)
+
 const categoriesSectionOpen = ref(false)
 const productsSectionOpen = ref(false)
 const introSectionOpen = ref(false)
@@ -116,6 +132,18 @@ const introContactEditTrimmed = computed(() => String(introContactEditValue.valu
 const footerAddTrimmed = computed(() => String(footerAddValue.value ?? '').trim())
 const footerEditTrimmed = computed(() => String(footerEditValue.value ?? '').trim())
 
+const splitLines = (value) => {
+  return String(value ?? '')
+    .split(/\r?\n/g)
+    .map((s) => String(s).trim())
+    .filter(Boolean)
+}
+
+const contactInfoAddLabelTrimmed = computed(() => String(contactInfoAddLabel.value ?? '').trim())
+const contactInfoEditLabelTrimmed = computed(() => String(contactInfoEditLabel.value ?? '').trim())
+const contactInfoAddLines = computed(() => splitLines(contactInfoAddTexts.value))
+const contactInfoEditLines = computed(() => splitLines(contactInfoEditTexts.value))
+
 const canSaveIntroAdd = computed(() => Boolean(introAddTrimmed.value))
 const canSaveIntroEdit = computed(() => Boolean(introEditId.value) && Boolean(introEditTrimmed.value))
 
@@ -131,6 +159,9 @@ const canSaveIntroContactEdit = computed(() => Boolean(introContactEditId.value)
 const canSaveFooterAdd = computed(() => Boolean(footerAddTrimmed.value))
 const canSaveFooterEdit = computed(() => Boolean(footerEditId.value) && Boolean(footerEditTrimmed.value))
 
+const canSaveContactInfoAdd = computed(() => Boolean(contactInfoAddLabelTrimmed.value) && contactInfoAddLines.value.length > 0)
+const canSaveContactInfoEdit = computed(() => Boolean(contactInfoEditId.value) && Boolean(contactInfoEditLabelTrimmed.value) && contactInfoEditLines.value.length > 0)
+
 const introRequiredError = 'Câmp obligatoriu.'
 
 const categoryEditOpen = ref(false)
@@ -139,6 +170,12 @@ const confirmOpen = ref(false)
 
 const savingCategory = ref(false)
 const savingProduct = ref(false)
+const savingIntroHome = ref(false)
+const savingIntroProducts = ref(false)
+const savingIntroDiscount = ref(false)
+const savingIntroContact = ref(false)
+const savingFooter = ref(false)
+const savingContactInfo = ref(false)
 const confirmLoading = ref(false)
 
 const snackbarOpen = ref(false)
@@ -152,6 +189,26 @@ const confirmSuccessMessage = ref('')
 
 const editingCategory = ref(null)
 const editingProduct = ref(null)
+
+const isAddingCategory = computed(() => Boolean(categoryEditOpen.value) && !editingCategory.value)
+const isAddingProduct = computed(() => Boolean(productEditOpen.value) && !editingProduct.value)
+
+const isEditingCategory = computed(() => Boolean(categoryEditOpen.value) && Boolean(editingCategory.value))
+const isEditingProduct = computed(() => Boolean(productEditOpen.value) && Boolean(editingProduct.value))
+
+const isAddingIntroHomeText = computed(() => Boolean(introAddOpen.value))
+const isAddingIntroProductsText = computed(() => Boolean(introProductsAddOpen.value))
+const isAddingIntroDiscountText = computed(() => Boolean(introDiscountAddOpen.value))
+const isAddingIntroContactText = computed(() => Boolean(introContactAddOpen.value))
+const isAddingFooterText = computed(() => Boolean(footerAddOpen.value))
+const isAddingContactInfoSection = computed(() => Boolean(contactInfoAddOpen.value))
+
+const isEditingIntroHomeText = computed(() => Boolean(introEditId.value))
+const isEditingIntroProductsText = computed(() => Boolean(introProductsEditId.value))
+const isEditingIntroDiscountText = computed(() => Boolean(introDiscountEditId.value))
+const isEditingIntroContactText = computed(() => Boolean(introContactEditId.value))
+const isEditingFooterText = computed(() => Boolean(footerEditId.value))
+const isEditingContactInfoSection = computed(() => Boolean(contactInfoEditId.value))
 
 const categoryForm = ref({
   id: '',
@@ -278,7 +335,7 @@ async function refresh() {
   loading.value = true
   error.value = ''
   try {
-    const [cats, prods, intro, introProds, introDisc, introCont, footer, msgs] = await Promise.all([
+    const [cats, prods, intro, introProds, introDisc, introCont, footer, contactInfo, msgs] = await Promise.all([
       listCategories(),
       listProducts(),
       listIntroTexts(),
@@ -286,6 +343,7 @@ async function refresh() {
       listIntroDiscountTexts(),
       listIntroContactTexts(),
       listFooterTexts(),
+      listContactInfo(),
       listMessages(),
     ])
     categories.value = cats
@@ -295,6 +353,7 @@ async function refresh() {
     introDiscountTexts.value = introDisc
     introContactTexts.value = introCont
     footerTexts.value = footer
+    contactInfoItems.value = contactInfo
     messages.value = msgs
     introAddOpen.value = false
     introAddValue.value = ''
@@ -330,6 +389,15 @@ async function refresh() {
     footerEditValue.value = ''
     footerAddTouched.value = false
     footerEditTouched.value = false
+
+    contactInfoAddOpen.value = false
+    contactInfoAddLabel.value = ''
+    contactInfoAddTexts.value = ''
+    contactInfoEditId.value = ''
+    contactInfoEditLabel.value = ''
+    contactInfoEditTexts.value = ''
+    contactInfoAddTouched.value = false
+    contactInfoEditTouched.value = false
   } catch (e) {
     error.value = e?.message || String(e)
   } finally {
@@ -691,6 +759,8 @@ function cancelIntroAdd() {
 
 async function saveIntroAdd() {
   error.value = ''
+  if (savingIntroHome.value) return
+  savingIntroHome.value = true
   try {
     introAddTouched.value = true
     if (!canSaveIntroAdd.value) return
@@ -700,6 +770,8 @@ async function saveIntroAdd() {
   } catch (e) {
     error.value = e?.message || String(e)
     showError()
+  } finally {
+    savingIntroHome.value = false
   }
 }
 
@@ -719,6 +791,8 @@ function cancelIntroEdit() {
 
 async function saveIntroEdit(itemId) {
   error.value = ''
+  if (savingIntroHome.value) return
+  savingIntroHome.value = true
   try {
     introEditTouched.value = true
     if (!canSaveIntroEdit.value) return
@@ -729,6 +803,8 @@ async function saveIntroEdit(itemId) {
   } catch (e) {
     error.value = e?.message || String(e)
     showError()
+  } finally {
+    savingIntroHome.value = false
   }
 }
 
@@ -791,6 +867,8 @@ function cancelIntroProductsAdd() {
 
 async function saveIntroProductsAdd() {
   error.value = ''
+  if (savingIntroProducts.value) return
+  savingIntroProducts.value = true
   try {
     introProductsAddTouched.value = true
     if (!canSaveIntroProductsAdd.value) return
@@ -800,6 +878,8 @@ async function saveIntroProductsAdd() {
   } catch (e) {
     error.value = e?.message || String(e)
     showError()
+  } finally {
+    savingIntroProducts.value = false
   }
 }
 
@@ -819,6 +899,8 @@ function cancelIntroProductsEdit() {
 
 async function saveIntroProductsEdit(itemId) {
   error.value = ''
+  if (savingIntroProducts.value) return
+  savingIntroProducts.value = true
   try {
     introProductsEditTouched.value = true
     if (!canSaveIntroProductsEdit.value) return
@@ -829,6 +911,8 @@ async function saveIntroProductsEdit(itemId) {
   } catch (e) {
     error.value = e?.message || String(e)
     showError()
+  } finally {
+    savingIntroProducts.value = false
   }
 }
 
@@ -877,6 +961,8 @@ function cancelIntroDiscountAdd() {
 
 async function saveIntroDiscountAdd() {
   error.value = ''
+  if (savingIntroDiscount.value) return
+  savingIntroDiscount.value = true
   try {
     introDiscountAddTouched.value = true
     if (!canSaveIntroDiscountAdd.value) return
@@ -886,6 +972,8 @@ async function saveIntroDiscountAdd() {
   } catch (e) {
     error.value = e?.message || String(e)
     showError()
+  } finally {
+    savingIntroDiscount.value = false
   }
 }
 
@@ -905,6 +993,8 @@ function cancelIntroDiscountEdit() {
 
 async function saveIntroDiscountEdit(itemId) {
   error.value = ''
+  if (savingIntroDiscount.value) return
+  savingIntroDiscount.value = true
   try {
     introDiscountEditTouched.value = true
     if (!canSaveIntroDiscountEdit.value) return
@@ -915,6 +1005,8 @@ async function saveIntroDiscountEdit(itemId) {
   } catch (e) {
     error.value = e?.message || String(e)
     showError()
+  } finally {
+    savingIntroDiscount.value = false
   }
 }
 
@@ -963,6 +1055,8 @@ function cancelIntroContactAdd() {
 
 async function saveIntroContactAdd() {
   error.value = ''
+  if (savingIntroContact.value) return
+  savingIntroContact.value = true
   try {
     introContactAddTouched.value = true
     if (!canSaveIntroContactAdd.value) return
@@ -972,6 +1066,8 @@ async function saveIntroContactAdd() {
   } catch (e) {
     error.value = e?.message || String(e)
     showError()
+  } finally {
+    savingIntroContact.value = false
   }
 }
 
@@ -991,6 +1087,8 @@ function cancelIntroContactEdit() {
 
 async function saveIntroContactEdit(itemId) {
   error.value = ''
+  if (savingIntroContact.value) return
+  savingIntroContact.value = true
   try {
     introContactEditTouched.value = true
     if (!canSaveIntroContactEdit.value) return
@@ -1001,6 +1099,8 @@ async function saveIntroContactEdit(itemId) {
   } catch (e) {
     error.value = e?.message || String(e)
     showError()
+  } finally {
+    savingIntroContact.value = false
   }
 }
 
@@ -1040,6 +1140,8 @@ function cancelFooterAdd() {
 
 async function saveFooterAdd() {
   error.value = ''
+  if (savingFooter.value) return
+  savingFooter.value = true
   try {
     footerAddTouched.value = true
     if (!canSaveFooterAdd.value) return
@@ -1049,6 +1151,8 @@ async function saveFooterAdd() {
   } catch (e) {
     error.value = e?.message || String(e)
     showError()
+  } finally {
+    savingFooter.value = false
   }
 }
 
@@ -1068,6 +1172,8 @@ function cancelFooterEdit() {
 
 async function saveFooterEdit(itemId) {
   error.value = ''
+  if (savingFooter.value) return
+  savingFooter.value = true
   try {
     footerEditTouched.value = true
     if (!canSaveFooterEdit.value) return
@@ -1078,6 +1184,8 @@ async function saveFooterEdit(itemId) {
   } catch (e) {
     error.value = e?.message || String(e)
     showError()
+  } finally {
+    savingFooter.value = false
   }
 }
 
@@ -1109,6 +1217,112 @@ async function persistFooterOrder() {
     await saveFooterRanks(footerTexts.value)
   } catch (e) {
     error.value = e?.message || String(e)
+  }
+}
+
+function startContactInfoAdd() {
+  contactInfoAddOpen.value = true
+  contactInfoAddLabel.value = ''
+  contactInfoAddTexts.value = ''
+  contactInfoEditId.value = ''
+  contactInfoEditLabel.value = ''
+  contactInfoEditTexts.value = ''
+  contactInfoAddTouched.value = false
+  contactInfoEditTouched.value = false
+}
+
+function cancelContactInfoAdd() {
+  contactInfoAddOpen.value = false
+  contactInfoAddLabel.value = ''
+  contactInfoAddTexts.value = ''
+  contactInfoAddTouched.value = false
+}
+
+async function saveContactInfoAdd() {
+  error.value = ''
+  if (savingContactInfo.value) return
+  savingContactInfo.value = true
+  try {
+    contactInfoAddTouched.value = true
+    if (!canSaveContactInfoAdd.value) return
+    await addContactInfoItem(contactInfoAddLabelTrimmed.value, contactInfoAddLines.value)
+    await refresh()
+    showSuccess('Secțiune Contact salvată.')
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError()
+  } finally {
+    savingContactInfo.value = false
+  }
+}
+
+function startContactInfoEdit(item) {
+  contactInfoEditId.value = String(item?.id || '')
+  contactInfoEditLabel.value = String(item?.label || '')
+  contactInfoEditTexts.value = Array.isArray(item?.texts) ? item.texts.join('\n') : ''
+  contactInfoAddOpen.value = false
+  contactInfoAddLabel.value = ''
+  contactInfoAddTexts.value = ''
+  contactInfoEditTouched.value = false
+}
+
+function cancelContactInfoEdit() {
+  contactInfoEditId.value = ''
+  contactInfoEditLabel.value = ''
+  contactInfoEditTexts.value = ''
+  contactInfoEditTouched.value = false
+}
+
+async function saveContactInfoEdit(itemId) {
+  error.value = ''
+  if (savingContactInfo.value) return
+  savingContactInfo.value = true
+  try {
+    contactInfoEditTouched.value = true
+    if (!canSaveContactInfoEdit.value) return
+    const current = contactInfoItems.value.find((x) => String(x?.id) === String(itemId))
+    await updateContactInfoItem(itemId, contactInfoEditLabelTrimmed.value, contactInfoEditLines.value, current?.rank)
+    await refresh()
+    showSuccess('Secțiune Contact salvată.')
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError()
+  } finally {
+    savingContactInfo.value = false
+  }
+}
+
+async function removeContactInfo(itemId) {
+  error.value = ''
+  try {
+    await deleteContactInfoItem(itemId)
+    await refresh()
+  } catch (e) {
+    error.value = e?.message || String(e)
+    throw e
+  }
+}
+
+async function persistContactInfoOrder() {
+  if (!rtdb) return
+  error.value = ''
+
+  contactInfoEditId.value = ''
+  contactInfoEditLabel.value = ''
+  contactInfoEditTexts.value = ''
+  contactInfoEditTouched.value = false
+  contactInfoAddOpen.value = false
+  contactInfoAddLabel.value = ''
+  contactInfoAddTexts.value = ''
+  contactInfoAddTouched.value = false
+
+  contactInfoItems.value = contactInfoItems.value.map((t, idx) => ({ ...t, rank: idx }))
+
+  try {
+    await saveContactInfoRanks(contactInfoItems.value)
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError()
   }
 }
 </script>
@@ -1151,6 +1365,7 @@ async function persistFooterOrder() {
                 variant="flat"
                 class="ok"
                 :size="actionBtnSize"
+                :disabled="categoryEditOpen"
                 @click="openCategoryCreate"
               >
                 Adaugă categorie nouă
@@ -1204,7 +1419,7 @@ async function persistFooterOrder() {
             </div>
 
             <div class="row d-flex justify-end mt-4">
-              <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="openCategoryEdit(c)">
+              <v-btn :size="actionBtnSize" variant="outlined" color="cyan" :disabled="isAddingCategory" @click="openCategoryEdit(c)">
                 Editează categorie
               </v-btn>
               <v-btn
@@ -1243,6 +1458,7 @@ async function persistFooterOrder() {
                 color="cyan"
                 variant="flat"
                 :size="actionBtnSize"
+                :disabled="productEditOpen"
                 @click="openProductCreate"
               >
                 Adaugă produs nou
@@ -1276,7 +1492,7 @@ async function persistFooterOrder() {
                   </div>
                   <p class="muted desc" :class="{ placeholder: !p.description }"><strong>Descriere:</strong> {{ p.description || '' }}</p>
                   <div class="row d-flex productActions">
-                    <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="openProductEdit(p)">
+                    <v-btn :size="actionBtnSize" variant="outlined" color="cyan" :disabled="isAddingProduct" @click="openProductEdit(p)">
                       Editează produs
                     </v-btn>
                     <v-btn
@@ -1301,7 +1517,7 @@ async function persistFooterOrder() {
         <div class="row sp-between">
           <h2 class="sectionTitle">Texte - Acasă</h2>
           <div class="row" style="gap: .25rem;">
-            <span class="pill">{{ introTexts.length }} texte</span>
+            <span class="pill">{{ introTexts.length }} {{ introTexts.length === 1 ? 'text' : 'texte' }}</span>
             <v-btn
               :size="actionBtnSize"
               variant="text"
@@ -1320,12 +1536,15 @@ async function persistFooterOrder() {
 
             <template v-else>
               <div class="row d-flex justify-end">
-                <v-btn v-if="!introAddOpen" color="cyan" variant="flat" :size="actionBtnSize" @click="startIntroAdd">
+                <v-btn v-if="!introAddOpen" color="cyan" variant="flat" :size="actionBtnSize" :disabled="isEditingIntroHomeText || savingIntroHome" @click="startIntroAdd">
                   Adaugă text nou
                 </v-btn>
               </div>
 
-              <div class="card" v-if="introAddOpen">
+              <div class="card" v-if="introAddOpen" style="position: relative;">
+                <v-overlay :model-value="savingIntroHome" contained class="align-center justify-center">
+                  <v-progress-circular indeterminate color="cyan" />
+                </v-overlay>
                 <div class="stack">
                   <v-text-field
                     v-model="introAddValue"
@@ -1339,8 +1558,8 @@ async function persistFooterOrder() {
                     @blur="introAddTouched = true"
                   />
                   <div class="row d-flex justify-end">
-                    <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroAdd">Renunță</v-btn>
-                    <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroAdd" @click="saveIntroAdd">Salvează</v-btn>
+                    <v-btn :size="actionBtnSize" variant="text" :disabled="savingIntroHome" @click="cancelIntroAdd">Renunță</v-btn>
+                    <v-btn :size="actionBtnSize" color="cyan" variant="flat" :loading="savingIntroHome" :disabled="savingIntroHome || !canSaveIntroAdd" @click="saveIntroAdd">Salvează</v-btn>
                   </div>
                 </div>
               </div>
@@ -1358,8 +1577,11 @@ async function persistFooterOrder() {
                 @end="persistIntroOrder"
               >
                 <template #item="{ element: t }">
-                  <div class="card mb-2">
+                  <div class="card mb-2" :style="introEditId === String(t.id) ? { position: 'relative' } : undefined">
                     <div v-if="introEditId === String(t.id)" class="stack">
+                      <v-overlay :model-value="savingIntroHome" contained class="align-center justify-center">
+                        <v-progress-circular indeterminate color="cyan" />
+                      </v-overlay>
                       <v-text-field
                         v-model="introEditValue"
                         label="Text *"
@@ -1372,15 +1594,15 @@ async function persistFooterOrder() {
                         @blur="introEditTouched = true"
                       />
                       <div class="row d-flex justify-end">
-                        <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroEdit">Renunță</v-btn>
-                        <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroEdit" @click="saveIntroEdit(t.id)">Salvează</v-btn>
+                        <v-btn :size="actionBtnSize" variant="text" :disabled="savingIntroHome" @click="cancelIntroEdit">Renunță</v-btn>
+                        <v-btn :size="actionBtnSize" color="cyan" variant="flat" :loading="savingIntroHome" :disabled="savingIntroHome || !canSaveIntroEdit" @click="saveIntroEdit(t.id)">Salvează</v-btn>
                       </div>
                     </div>
 
                     <div v-else class="stack">
                       <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
                       <div class="row d-flex justify-end">
-                        <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroEdit(t)">Editează text</v-btn>
+                        <v-btn :size="actionBtnSize" variant="outlined" color="cyan" :disabled="isAddingIntroHomeText" @click="startIntroEdit(t)">Editează text</v-btn>
                         <v-btn
                           :size="actionBtnSize"
                           variant="outlined"
@@ -1406,7 +1628,7 @@ async function persistFooterOrder() {
       <div class="row sp-between">
         <h2 class="sectionTitle">Texte - Produse</h2>
         <div class="row" style="gap: .25rem;">
-          <span class="pill">{{ introProductsTexts.length }} texte</span>
+          <span class="pill">{{ introProductsTexts.length }} {{ introProductsTexts.length === 1 ? 'text' : 'texte' }}</span>
           <v-btn
             :size="actionBtnSize"
             variant="text"
@@ -1425,12 +1647,15 @@ async function persistFooterOrder() {
 
           <template v-else>
             <div class="row d-flex justify-end">
-              <v-btn v-if="!introProductsAddOpen" color="cyan" variant="flat" :size="actionBtnSize" @click="startIntroProductsAdd">
+              <v-btn v-if="!introProductsAddOpen" color="cyan" variant="flat" :size="actionBtnSize" :disabled="isEditingIntroProductsText || savingIntroProducts" @click="startIntroProductsAdd">
                 Adaugă text nou
               </v-btn>
             </div>
 
-            <div class="card" v-if="introProductsAddOpen">
+            <div class="card" v-if="introProductsAddOpen" style="position: relative;">
+              <v-overlay :model-value="savingIntroProducts" contained class="align-center justify-center">
+                <v-progress-circular indeterminate color="cyan" />
+              </v-overlay>
               <div class="stack">
                 <v-text-field
                   v-model="introProductsAddValue"
@@ -1444,8 +1669,8 @@ async function persistFooterOrder() {
                   @blur="introProductsAddTouched = true"
                 />
                 <div class="row d-flex justify-end">
-                  <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroProductsAdd">Renunță</v-btn>
-                  <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroProductsAdd" @click="saveIntroProductsAdd">Salvează</v-btn>
+                  <v-btn :size="actionBtnSize" variant="text" :disabled="savingIntroProducts" @click="cancelIntroProductsAdd">Renunță</v-btn>
+                  <v-btn :size="actionBtnSize" color="cyan" variant="flat" :loading="savingIntroProducts" :disabled="savingIntroProducts || !canSaveIntroProductsAdd" @click="saveIntroProductsAdd">Salvează</v-btn>
                 </div>
               </div>
             </div>
@@ -1463,8 +1688,11 @@ async function persistFooterOrder() {
               @end="persistIntroProductsOrder"
             >
               <template #item="{ element: t }">
-                <div class="card mb-2">
+                <div class="card mb-2" :style="introProductsEditId === String(t.id) ? { position: 'relative' } : undefined">
                   <div v-if="introProductsEditId === String(t.id)" class="stack">
+                    <v-overlay :model-value="savingIntroProducts" contained class="align-center justify-center">
+                      <v-progress-circular indeterminate color="cyan" />
+                    </v-overlay>
                     <v-text-field
                       v-model="introProductsEditValue"
                       label="Text *"
@@ -1477,15 +1705,15 @@ async function persistFooterOrder() {
                       @blur="introProductsEditTouched = true"
                     />
                     <div class="row d-flex justify-end">
-                      <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroProductsEdit">Renunță</v-btn>
-                      <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroProductsEdit" @click="saveIntroProductsEdit(t.id)">Salvează</v-btn>
+                      <v-btn :size="actionBtnSize" variant="text" :disabled="savingIntroProducts" @click="cancelIntroProductsEdit">Renunță</v-btn>
+                      <v-btn :size="actionBtnSize" color="cyan" variant="flat" :loading="savingIntroProducts" :disabled="savingIntroProducts || !canSaveIntroProductsEdit" @click="saveIntroProductsEdit(t.id)">Salvează</v-btn>
                     </div>
                   </div>
 
                   <div v-else class="stack">
                     <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
                     <div class="row d-flex justify-end">
-                      <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroProductsEdit(t)">Editează text</v-btn>
+                      <v-btn :size="actionBtnSize" variant="outlined" color="cyan" :disabled="isAddingIntroProductsText" @click="startIntroProductsEdit(t)">Editează text</v-btn>
                       <v-btn
                         :size="actionBtnSize"
                         variant="outlined"
@@ -1510,7 +1738,7 @@ async function persistFooterOrder() {
       <div class="row sp-between">
         <h2 class="sectionTitle">Texte - Reduceri</h2>
         <div class="row" style="gap: .25rem;">
-          <span class="pill">{{ introDiscountTexts.length }} texte</span>
+          <span class="pill">{{ introDiscountTexts.length }} {{ introDiscountTexts.length === 1 ? 'text' : 'texte' }}</span>
           <v-btn
             :size="actionBtnSize"
             variant="text"
@@ -1529,12 +1757,15 @@ async function persistFooterOrder() {
 
           <template v-else>
             <div class="row d-flex justify-end">
-              <v-btn v-if="!introDiscountAddOpen" color="cyan" variant="flat" :size="actionBtnSize" @click="startIntroDiscountAdd">
+              <v-btn v-if="!introDiscountAddOpen" color="cyan" variant="flat" :size="actionBtnSize" :disabled="isEditingIntroDiscountText || savingIntroDiscount" @click="startIntroDiscountAdd">
                 Adaugă text nou
               </v-btn>
             </div>
 
-            <div class="card" v-if="introDiscountAddOpen">
+            <div class="card" v-if="introDiscountAddOpen" style="position: relative;">
+              <v-overlay :model-value="savingIntroDiscount" contained class="align-center justify-center">
+                <v-progress-circular indeterminate color="cyan" />
+              </v-overlay>
               <div class="stack">
                 <v-text-field
                   v-model="introDiscountAddValue"
@@ -1548,8 +1779,8 @@ async function persistFooterOrder() {
                   @blur="introDiscountAddTouched = true"
                 />
                 <div class="row d-flex justify-end">
-                  <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroDiscountAdd">Renunță</v-btn>
-                  <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroDiscountAdd" @click="saveIntroDiscountAdd">Salvează</v-btn>
+                  <v-btn :size="actionBtnSize" variant="text" :disabled="savingIntroDiscount" @click="cancelIntroDiscountAdd">Renunță</v-btn>
+                  <v-btn :size="actionBtnSize" color="cyan" variant="flat" :loading="savingIntroDiscount" :disabled="savingIntroDiscount || !canSaveIntroDiscountAdd" @click="saveIntroDiscountAdd">Salvează</v-btn>
                 </div>
               </div>
             </div>
@@ -1567,8 +1798,11 @@ async function persistFooterOrder() {
               @end="persistIntroDiscountOrder"
             >
               <template #item="{ element: t }">
-                <div class="card mb-2">
+                <div class="card mb-2" :style="introDiscountEditId === String(t.id) ? { position: 'relative' } : undefined">
                   <div v-if="introDiscountEditId === String(t.id)" class="stack">
+                    <v-overlay :model-value="savingIntroDiscount" contained class="align-center justify-center">
+                      <v-progress-circular indeterminate color="cyan" />
+                    </v-overlay>
                     <v-text-field
                       v-model="introDiscountEditValue"
                       label="Text *"
@@ -1581,15 +1815,15 @@ async function persistFooterOrder() {
                       @blur="introDiscountEditTouched = true"
                     />
                     <div class="row d-flex justify-end">
-                      <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroDiscountEdit">Renunță</v-btn>
-                      <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroDiscountEdit" @click="saveIntroDiscountEdit(t.id)">Salvează</v-btn>
+                      <v-btn :size="actionBtnSize" variant="text" :disabled="savingIntroDiscount" @click="cancelIntroDiscountEdit">Renunță</v-btn>
+                      <v-btn :size="actionBtnSize" color="cyan" variant="flat" :loading="savingIntroDiscount" :disabled="savingIntroDiscount || !canSaveIntroDiscountEdit" @click="saveIntroDiscountEdit(t.id)">Salvează</v-btn>
                     </div>
                   </div>
 
                   <div v-else class="stack">
                     <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
                     <div class="row d-flex justify-end">
-                      <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroDiscountEdit(t)">Editează text</v-btn>
+                        <v-btn :size="actionBtnSize" variant="outlined" color="cyan" :disabled="isAddingIntroDiscountText" @click="startIntroDiscountEdit(t)">Editează text</v-btn>
                       <v-btn
                         :size="actionBtnSize"
                         variant="outlined"
@@ -1614,7 +1848,7 @@ async function persistFooterOrder() {
       <div class="row sp-between">
         <h2 class="sectionTitle">Texte - Contact</h2>
         <div class="row" style="gap: .25rem;">
-          <span class="pill">{{ introContactTexts.length }} texte</span>
+          <span class="pill">{{ introContactTexts.length }} {{ introContactTexts.length === 1 ? 'text' : 'texte' }}</span>
           <v-btn
             :size="actionBtnSize"
             variant="text"
@@ -1633,12 +1867,15 @@ async function persistFooterOrder() {
 
           <template v-else>
             <div class="row d-flex justify-end">
-              <v-btn v-if="!introContactAddOpen" color="cyan" variant="flat" :size="actionBtnSize" @click="startIntroContactAdd">
+              <v-btn v-if="!introContactAddOpen" color="cyan" variant="flat" :size="actionBtnSize" :disabled="isEditingIntroContactText || savingIntroContact" @click="startIntroContactAdd">
                 Adaugă text nou
               </v-btn>
             </div>
 
-            <div class="card" v-if="introContactAddOpen">
+            <div class="card" v-if="introContactAddOpen" style="position: relative;">
+              <v-overlay :model-value="savingIntroContact" contained class="align-center justify-center">
+                <v-progress-circular indeterminate color="cyan" />
+              </v-overlay>
               <div class="stack">
                 <v-text-field
                   v-model="introContactAddValue"
@@ -1652,8 +1889,8 @@ async function persistFooterOrder() {
                   @blur="introContactAddTouched = true"
                 />
                 <div class="row d-flex justify-end">
-                  <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroContactAdd">Renunță</v-btn>
-                  <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroContactAdd" @click="saveIntroContactAdd">Salvează</v-btn>
+                  <v-btn :size="actionBtnSize" variant="text" :disabled="savingIntroContact" @click="cancelIntroContactAdd">Renunță</v-btn>
+                  <v-btn :size="actionBtnSize" color="cyan" variant="flat" :loading="savingIntroContact" :disabled="savingIntroContact || !canSaveIntroContactAdd" @click="saveIntroContactAdd">Salvează</v-btn>
                 </div>
               </div>
             </div>
@@ -1671,8 +1908,11 @@ async function persistFooterOrder() {
               @end="persistIntroContactOrder"
             >
               <template #item="{ element: t }">
-                <div class="card mb-2">
+                <div class="card mb-2" :style="introContactEditId === String(t.id) ? { position: 'relative' } : undefined">
                   <div v-if="introContactEditId === String(t.id)" class="stack">
+                    <v-overlay :model-value="savingIntroContact" contained class="align-center justify-center">
+                      <v-progress-circular indeterminate color="cyan" />
+                    </v-overlay>
                     <v-text-field
                       v-model="introContactEditValue"
                       label="Text *"
@@ -1685,15 +1925,15 @@ async function persistFooterOrder() {
                       @blur="introContactEditTouched = true"
                     />
                     <div class="row d-flex justify-end">
-                      <v-btn :size="actionBtnSize" variant="text" @click="cancelIntroContactEdit">Renunță</v-btn>
-                      <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveIntroContactEdit" @click="saveIntroContactEdit(t.id)">Salvează</v-btn>
+                      <v-btn :size="actionBtnSize" variant="text" :disabled="savingIntroContact" @click="cancelIntroContactEdit">Renunță</v-btn>
+                      <v-btn :size="actionBtnSize" color="cyan" variant="flat" :loading="savingIntroContact" :disabled="savingIntroContact || !canSaveIntroContactEdit" @click="saveIntroContactEdit(t.id)">Salvează</v-btn>
                     </div>
                   </div>
 
                   <div v-else class="stack">
                     <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
                     <div class="row d-flex justify-end">
-                      <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startIntroContactEdit(t)">Editează text</v-btn>
+                        <v-btn :size="actionBtnSize" variant="outlined" color="cyan" :disabled="isAddingIntroContactText" @click="startIntroContactEdit(t)">Editează text</v-btn>
                       <v-btn
                         :size="actionBtnSize"
                         variant="outlined"
@@ -1718,7 +1958,7 @@ async function persistFooterOrder() {
         <div class="row sp-between">
           <h2 class="sectionTitle">Texte - Footer</h2>
           <div class="row" style="gap: .25rem;">
-            <span class="pill">{{ footerTexts.length }} texte</span>
+            <span class="pill">{{ footerTexts.length }} {{ footerTexts.length === 1 ? 'text' : 'texte' }}</span>
             <v-btn
               :size="actionBtnSize"
               variant="text"
@@ -1737,12 +1977,15 @@ async function persistFooterOrder() {
 
             <template v-else>
               <div class="row d-flex justify-end">
-                <v-btn v-if="!footerAddOpen" color="cyan" variant="flat" :size="actionBtnSize" @click="startFooterAdd">
+                <v-btn v-if="!footerAddOpen" color="cyan" variant="flat" :size="actionBtnSize" :disabled="isEditingFooterText || savingFooter" @click="startFooterAdd">
                   Adaugă text nou
                 </v-btn>
               </div>
 
-              <div class="card" v-if="footerAddOpen">
+              <div class="card" v-if="footerAddOpen" style="position: relative;">
+                <v-overlay :model-value="savingFooter" contained class="align-center justify-center">
+                  <v-progress-circular indeterminate color="cyan" />
+                </v-overlay>
                 <div class="stack">
                   <v-text-field
                     v-model="footerAddValue"
@@ -1756,8 +1999,8 @@ async function persistFooterOrder() {
                     @blur="footerAddTouched = true"
                   />
                   <div class="row d-flex justify-end">
-                    <v-btn :size="actionBtnSize" variant="text" @click="cancelFooterAdd">Renunță</v-btn>
-                    <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveFooterAdd" @click="saveFooterAdd">Salvează</v-btn>
+                    <v-btn :size="actionBtnSize" variant="text" :disabled="savingFooter" @click="cancelFooterAdd">Renunță</v-btn>
+                    <v-btn :size="actionBtnSize" color="cyan" variant="flat" :loading="savingFooter" :disabled="savingFooter || !canSaveFooterAdd" @click="saveFooterAdd">Salvează</v-btn>
                   </div>
                 </div>
               </div>
@@ -1775,8 +2018,11 @@ async function persistFooterOrder() {
                 @end="persistFooterOrder"
               >
                 <template #item="{ element: t }">
-                  <div class="card mb-2">
+                  <div class="card mb-2" :style="footerEditId === String(t.id) ? { position: 'relative' } : undefined">
                     <div v-if="footerEditId === String(t.id)" class="stack">
+                      <v-overlay :model-value="savingFooter" contained class="align-center justify-center">
+                        <v-progress-circular indeterminate color="cyan" />
+                      </v-overlay>
                       <v-text-field
                         v-model="footerEditValue"
                         label="Text *"
@@ -1789,15 +2035,15 @@ async function persistFooterOrder() {
                         @blur="footerEditTouched = true"
                       />
                       <div class="row d-flex justify-end">
-                        <v-btn :size="actionBtnSize" variant="text" @click="cancelFooterEdit">Renunță</v-btn>
-                        <v-btn :size="actionBtnSize" color="cyan" variant="flat" :disabled="!canSaveFooterEdit" @click="saveFooterEdit(t.id)">Salvează</v-btn>
+                        <v-btn :size="actionBtnSize" variant="text" :disabled="savingFooter" @click="cancelFooterEdit">Renunță</v-btn>
+                        <v-btn :size="actionBtnSize" color="cyan" variant="flat" :loading="savingFooter" :disabled="savingFooter || !canSaveFooterEdit" @click="saveFooterEdit(t.id)">Salvează</v-btn>
                       </div>
                     </div>
 
                     <div v-else class="stack">
                       <div class="muted" style="line-height: 1.5;">{{ t.text }}</div>
                       <div class="row d-flex justify-end">
-                        <v-btn :size="actionBtnSize" variant="outlined" color="cyan" @click="startFooterEdit(t)">Editează text</v-btn>
+                        <v-btn :size="actionBtnSize" variant="outlined" color="cyan" :disabled="isAddingFooterText" @click="startFooterEdit(t)">Editează text</v-btn>
                         <v-btn
                           :size="actionBtnSize"
                           variant="outlined"
@@ -1820,9 +2066,146 @@ async function persistFooterOrder() {
 
       <section class="stack">
         <div class="row sp-between">
+          <h2 class="sectionTitle">Informații Contact</h2>
+          <div class="row" style="gap: .25rem;">
+            <span class="pill">{{ contactInfoItems.length }} {{ contactInfoItems.length === 1 ? 'secțiune' : 'secțiuni' }}</span>
+            <v-btn
+              :size="actionBtnSize"
+              variant="text"
+              :icon="chevronFor(contactInfoSectionOpen)"
+              @click="contactInfoSectionOpen = !contactInfoSectionOpen"
+            />
+          </div>
+        </div>
+
+        <v-expand-transition>
+          <div v-show="contactInfoSectionOpen" class="stack">
+            <div v-if="!rtdb" class="card">
+              <strong>Eroare</strong>
+              <p class="muted">Realtime Database nu este configurat.</p>
+            </div>
+
+            <template v-else>
+              <div class="row d-flex justify-end">
+                <v-btn v-if="!contactInfoAddOpen" color="cyan" variant="flat" :size="actionBtnSize" :disabled="isEditingContactInfoSection || savingContactInfo" @click="startContactInfoAdd">
+                  Adaugă secțiune
+                </v-btn>
+              </div>
+
+              <div class="card" v-if="contactInfoAddOpen" style="position: relative;">
+                <v-overlay :model-value="savingContactInfo" contained class="align-center justify-center">
+                  <v-progress-circular indeterminate color="cyan" />
+                </v-overlay>
+                <div class="stack">
+                  <v-text-field
+                    v-model="contactInfoAddLabel"
+                    label="Nume secțiune *"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    autocomplete="off"
+                    :error="contactInfoAddTouched && !contactInfoAddLabelTrimmed"
+                    :error-messages="contactInfoAddTouched && !contactInfoAddLabelTrimmed ? introRequiredError : ''"
+                    @blur="contactInfoAddTouched = true"
+                  />
+                  <v-textarea
+                    v-model="contactInfoAddTexts"
+                    label="Text *"
+                    variant="outlined"
+                    density="compact"
+                    rows="4"
+                    hide-details
+                    autocomplete="off"
+                    :error="contactInfoAddTouched && contactInfoAddLines.length === 0"
+                    :error-messages="contactInfoAddTouched && contactInfoAddLines.length === 0 ? introRequiredError : ''"
+                    @blur="contactInfoAddTouched = true"
+                  />
+                  <div class="row d-flex justify-end">
+                    <v-btn :size="actionBtnSize" variant="text" :disabled="savingContactInfo" @click="cancelContactInfoAdd">Renunță</v-btn>
+                    <v-btn :size="actionBtnSize" color="cyan" variant="flat" :loading="savingContactInfo" :disabled="savingContactInfo || !canSaveContactInfoAdd" @click="saveContactInfoAdd">Salvează</v-btn>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="contactInfoItems.length === 0" class="card">
+                <strong>Nu există secțiuni încă.</strong>
+                <p class="muted">Adaugă program, telefon, e-mail etc. și vor apărea pe pagina Contact.</p>
+              </div>
+
+              <draggable
+                v-model="contactInfoItems"
+                item-key="id"
+                :delay="300"
+                :delay-on-touch-only="true"
+                @end="persistContactInfoOrder"
+              >
+                <template #item="{ element: t }">
+                  <div class="card mb-2" :style="contactInfoEditId === String(t.id) ? { position: 'relative' } : undefined">
+                    <div v-if="contactInfoEditId === String(t.id)" class="stack">
+                      <v-overlay :model-value="savingContactInfo" contained class="align-center justify-center">
+                        <v-progress-circular indeterminate color="cyan" />
+                      </v-overlay>
+                      <v-text-field
+                        v-model="contactInfoEditLabel"
+                        label="Nume secțiune *"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        autocomplete="off"
+                        :error="contactInfoEditTouched && !contactInfoEditLabelTrimmed"
+                        :error-messages="contactInfoEditTouched && !contactInfoEditLabelTrimmed ? introRequiredError : ''"
+                        @blur="contactInfoEditTouched = true"
+                      />
+                      <v-textarea
+                        v-model="contactInfoEditTexts"
+                        label="Text *"
+                        variant="outlined"
+                        density="compact"
+                        rows="4"
+                        hide-details
+                        autocomplete="off"
+                        :error="contactInfoEditTouched && contactInfoEditLines.length === 0"
+                        :error-messages="contactInfoEditTouched && contactInfoEditLines.length === 0 ? introRequiredError : ''"
+                        @blur="contactInfoEditTouched = true"
+                      />
+                      <div class="row d-flex justify-end">
+                        <v-btn :size="actionBtnSize" variant="text" :disabled="savingContactInfo" @click="cancelContactInfoEdit">Renunță</v-btn>
+                        <v-btn :size="actionBtnSize" color="cyan" variant="flat" :loading="savingContactInfo" :disabled="savingContactInfo || !canSaveContactInfoEdit" @click="saveContactInfoEdit(t.id)">Salvează</v-btn>
+                      </div>
+                    </div>
+
+                    <div v-else class="stack" style="gap:.25rem;">
+                      <strong>{{ t.label }}</strong>
+                      <p v-for="(line, idx) in (t.texts || [])" :key="idx" class="muted" style="margin:0;">
+                        {{ line }}
+                      </p>
+                      <div class="row d-flex justify-end" style="margin-top:.5rem;">
+                        <v-btn :size="actionBtnSize" variant="outlined" color="cyan" :disabled="isAddingContactInfoSection" @click="startContactInfoEdit(t)">Editează secțiunea</v-btn>
+                        <v-btn
+                          :size="actionBtnSize"
+                          variant="outlined"
+                          color="red"
+                          @click="askConfirmWithSuccess({ title: 'Șterge secțiunea', text: 'Sigur vrei să ștergi această secțiune?', action: () => removeContactInfo(t.id), successMessage: 'Secțiunea a fost ștearsă.' })"
+                        >
+                          Șterge secțiunea
+                        </v-btn>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </draggable>
+            </template>
+          </div>
+        </v-expand-transition>
+      </section>
+
+      <div class="divider" />
+
+      <section class="stack">
+        <div class="row sp-between">
           <h2 class="sectionTitle">Mesaje primite</h2>
           <div class="row" style="gap: .25rem;">
-            <span class="pill">{{ messages.length }} mesaje</span>
+            <span class="pill">{{ messages.length }} {{ messages.length === 1 ? 'mesaj' : 'mesaje' }}</span>
             <v-btn
               :size="actionBtnSize"
               variant="text"
@@ -2014,7 +2397,6 @@ async function persistFooterOrder() {
 .divider {
   height: 2px;
   background: rgba(255,255,255,.22);
-  margin: .9rem 0 0;
 }
 .sectionDivider {
   margin: 1.25rem 0;
@@ -2191,9 +2573,6 @@ async function persistFooterOrder() {
   .catThumb {
     width: min(120px, 34vw);
     border-radius: 10px;
-  }
-  .divider {
-    margin-top: .75rem;
   }
   .grid {
     grid-template-columns: 1fr;

@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useDisplay } from 'vuetify'
 import { app, rtdb } from '../lib/firebase'
-import { listIntroContactTexts } from '../services/productsService'
+import { listContactInfo, listIntroContactTexts } from '../services/productsService'
 
 const contact = reactive({
   name: '',
@@ -19,10 +19,27 @@ const sent = ref(false)
 const introTexts = ref([])
 const introLoading = ref(Boolean(rtdb))
 
+const contactInfo = ref([])
+const contactInfoLoading = ref(Boolean(rtdb))
+
 const introLines = computed(() => {
   if (introLoading.value) return []
   return introTexts.value.map((x) => String(x?.text || '').trim()).filter(Boolean)
 })
+
+const contactInfoSections = computed(() => {
+  if (!rtdb) return []
+  if (contactInfoLoading.value) return []
+  return (contactInfo.value || [])
+    .map((s) => ({
+      ...s,
+      label: String(s?.label || '').trim(),
+      texts: Array.isArray(s?.texts) ? s.texts.map((t) => String(t ?? '').trim()).filter(Boolean) : [],
+    }))
+    .filter((s) => s.label)
+})
+
+const hasContactInfo = computed(() => contactInfoSections.value.length > 0)
 
 const display = useDisplay()
 const submitBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
@@ -86,13 +103,20 @@ const canSend = computed(() => {
 onMounted(async () => {
   if (!rtdb) {
     introLoading.value = false
+    contactInfoLoading.value = false
     return
   }
   try {
-    introTexts.value = await listIntroContactTexts()
+    const [introRes, contactRes] = await Promise.allSettled([
+      listIntroContactTexts(),
+      listContactInfo(),
+    ])
+    if (introRes.status === 'fulfilled') introTexts.value = introRes.value
+    if (contactRes.status === 'fulfilled') contactInfo.value = contactRes.value
   } catch {
   } finally {
     introLoading.value = false
+    contactInfoLoading.value = false
   }
 })
 
@@ -176,7 +200,7 @@ async function send() {
     <div class="stack" style="gap: .35rem;">
       <p v-for="(t, idx) in introLines" :key="idx" class="muted">{{ t }}</p>
     </div>
-    <div class="grid">
+    <div class="grid" :class="{ oneCol: !hasContactInfo }">
       <form class="card" @submit.prevent="send">
         <div class="row">
           <v-text-field
@@ -236,24 +260,10 @@ async function send() {
           </v-btn>
         </div>
       </form>
-      <div class="card">
-        <div class="info-section">
-          <strong>Zonă de prezentare produse</strong>
-          <p class="muted">Strada Principală, Nr. 267, Chiheru de Sus</p>
-          <p class="muted">Jud. Mureș</p>
-        </div>
-        <div class="info-section">
-          <strong>Program</strong>
-          <p class="muted">Luni–Vineri: 08:00–20:00</p>
-          <p class="muted">Sâmbătă-Duminică: 10:00–15:00</p>
-        </div>
-        <div class="info-section">
-          <strong>Telefon</strong>
-          <p class="muted">0759 323 577</p>
-        </div>
-        <div class="info-section">
-          <strong>E-mail</strong>
-          <p class="muted">mobiliergradina_art@yahoo.com</p>
+      <div v-if="hasContactInfo" class="card">
+        <div v-for="s in contactInfoSections" :key="s.id || s.label" class="info-section">
+          <strong>{{ s.label }}</strong>
+          <p v-for="(t, idx) in (s.texts || [])" :key="idx" class="muted">{{ t }}</p>
         </div>
       </div>
     </div>
@@ -293,6 +303,9 @@ async function send() {
 @media (min-width: 960px) {
   .grid {
     grid-template-columns: 1.5fr 1fr;
+  }
+  .grid.oneCol {
+    grid-template-columns: 1fr;
   }
 }
 

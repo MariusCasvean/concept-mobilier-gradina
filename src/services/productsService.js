@@ -71,6 +71,47 @@ function normalizeStringList(val) {
   return []
 }
 
+function normalizeTextLines(val) {
+  if (!val) return []
+  if (typeof val === 'string') {
+    const s = val.trim()
+    return s ? [s] : []
+  }
+  if (Array.isArray(val)) {
+    return val.map((x) => String(x ?? '').trim()).filter(Boolean)
+  }
+  if (typeof val === 'object') {
+    return Object.entries(val)
+      .sort(([a], [b]) => String(a).localeCompare(String(b)))
+      .map(([, x]) => String(x ?? '').trim())
+      .filter(Boolean)
+  }
+  return []
+}
+
+function normalizeContactInfoList(val) {
+  if (!val || typeof val !== 'object') return []
+  const entries = Object.entries(val).sort(([a], [b]) => String(a).localeCompare(String(b)))
+  const normalized = entries
+    .map(([key, item], idx) => {
+      if (!item || typeof item !== 'object') return null
+      const label = String(item.label ?? item.title ?? item.name ?? '').trim()
+      const texts = normalizeTextLines(item.texts ?? item.lines ?? item.items)
+      const rawRank = Number(item.rank)
+      const rank = Number.isFinite(rawRank) ? rawRank : idx
+      if (!label) return null
+      return { id: String(key), label, texts, rank }
+    })
+    .filter(Boolean)
+
+  return normalized.sort((a, b) => {
+    const ra = Number.isFinite(Number(a.rank)) ? Number(a.rank) : 0
+    const rb = Number.isFinite(Number(b.rank)) ? Number(b.rank) : 0
+    if (ra !== rb) return ra - rb
+    return String(a.id).localeCompare(String(b.id))
+  })
+}
+
 function normalizeMessages(val) {
   const isDeleted = (v) => v === true || v === 1 || String(v ?? '').toLowerCase() === 'true' || String(v ?? '') === '1'
 
@@ -391,6 +432,92 @@ export async function saveFooterRanks(items) {
   }
 
   await update(dbRef(rtdb, 'footer'), payload)
+}
+
+// Contact info sections (Contact page right-side card)
+export async function listContactInfo() {
+  if (!rtdb) {
+    await sleep(40)
+    return []
+  }
+  const snap = await get(dbRef(rtdb, 'contactInfo'))
+  return normalizeContactInfoList(snap.exists() ? snap.val() : null)
+}
+
+export async function addContactInfoItem(label, texts) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const cleanLabel = String(label ?? '').trim()
+  const cleanTexts = Array.isArray(texts)
+    ? texts.map((t) => String(t ?? '').trim()).filter(Boolean)
+    : normalizeTextLines(texts)
+
+  if (!cleanLabel) throw new Error('Eticheta este obligatorie.')
+  if (cleanTexts.length === 0) throw new Error('Adaugă cel puțin o linie de text.')
+
+  const existingSnap = await get(dbRef(rtdb, 'contactInfo'))
+  const existing = normalizeContactInfoList(existingSnap.exists() ? existingSnap.val() : null)
+  const maxRank = existing.reduce((m, item) => {
+    const r = Number(item?.rank)
+    return Number.isFinite(r) ? Math.max(m, r) : m
+  }, -1)
+  const rank = maxRank + 1
+
+  const nodeRef = push(dbRef(rtdb, 'contactInfo'))
+  const id = String(nodeRef.key || '')
+  if (!id) throw new Error('Nu am putut genera ID pentru secțiunea Contact.')
+
+  await set(nodeRef, { label: cleanLabel, texts: cleanTexts, rank })
+  return { id, label: cleanLabel, texts: cleanTexts, rank }
+}
+
+export async function updateContactInfoItem(id, label, texts, rank) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const cleanId = String(id ?? '').trim()
+  const cleanLabel = String(label ?? '').trim()
+  const cleanTexts = Array.isArray(texts)
+    ? texts.map((t) => String(t ?? '').trim()).filter(Boolean)
+    : normalizeTextLines(texts)
+
+  if (!cleanId) throw new Error('ID invalid.')
+  if (!cleanLabel) throw new Error('Eticheta este obligatorie.')
+  if (cleanTexts.length === 0) throw new Error('Adaugă cel puțin o linie de text.')
+
+  let finalRank = Number(rank)
+  if (!Number.isFinite(finalRank)) {
+    const snap = await get(dbRef(rtdb, `contactInfo/${cleanId}`))
+    const val = snap.exists() ? snap.val() : null
+    const r = val && typeof val === 'object' ? Number(val.rank) : NaN
+    finalRank = Number.isFinite(r) ? r : 0
+  }
+
+  await set(dbRef(rtdb, `contactInfo/${cleanId}`), { label: cleanLabel, texts: cleanTexts, rank: finalRank })
+  return { id: cleanId, label: cleanLabel, texts: cleanTexts, rank: finalRank }
+}
+
+export async function deleteContactInfoItem(id) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  const cleanId = String(id ?? '').trim()
+  if (!cleanId) throw new Error('ID invalid.')
+  await remove(dbRef(rtdb, `contactInfo/${cleanId}`))
+}
+
+export async function saveContactInfoRanks(items) {
+  if (!rtdb) throw new Error('Realtime Database nu este configurat.')
+  if (!Array.isArray(items)) throw new Error('Lista este invalidă.')
+
+  const payload = {}
+  for (let i = 0; i < items.length; i++) {
+    const id = String(items[i]?.id ?? '').trim()
+    const label = String(items[i]?.label ?? '').trim()
+    const texts = Array.isArray(items[i]?.texts)
+      ? items[i].texts.map((t) => String(t ?? '').trim()).filter(Boolean)
+      : normalizeTextLines(items[i]?.texts)
+
+    if (!id || !label || texts.length === 0) continue
+    payload[id] = { label, texts, rank: i }
+  }
+
+  await update(dbRef(rtdb, 'contactInfo'), payload)
 }
 
 export async function listCategories() {

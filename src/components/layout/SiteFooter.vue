@@ -128,7 +128,7 @@ function confirmAdmin() {
             <RouterLink to="/discounts">Reduceri</RouterLink>
             <RouterLink to="/contact">Contact</RouterLink>
             <template class="admin-link">
-              <a href="#" class="mr-1" @click.prevent="openAdminDialog">Administrare</a><v-icon size="18" color="cyan">mdi-lock</v-icon>
+              <a href="#" class="mr-1" @click.prevent="openAdminDialog">Administrare</a><v-icon size="18">mdi-lock</v-icon>
             </template>
           </div>
         </div>
@@ -213,6 +213,9 @@ function confirmAdmin() {
 .admin-link {
   display: flex;
   align-items: center;
+}
+.admin-link * {
+  color: #b88052;
 }
 .links {
   display: grid;

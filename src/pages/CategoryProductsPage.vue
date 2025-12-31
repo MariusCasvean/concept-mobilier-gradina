@@ -139,7 +139,7 @@ watch(categorySlug, load)
       </div>
     </div>
 
-    <v-dialog v-model="detailsOpen" max-width="760">
+    <v-dialog v-model="detailsOpen" max-width="760" persistent>
       <v-card class="card" elevation="2">
         <v-card-title class="detailsTitle">
           {{ selectedProduct?.title || 'Detalii produs' }}

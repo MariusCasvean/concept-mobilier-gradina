@@ -1218,7 +1218,7 @@ async function persistFooterOrder() {
     </div>
 
     <!-- Category Edit Dialog -->
-    <v-dialog v-model="categoryEditOpen" max-width="720" :persistent="savingCategory">
+    <v-dialog v-model="categoryEditOpen" max-width="720" persistent>
       <v-card class="card" elevation="2">
 			<v-overlay :model-value="savingCategory" contained class="align-center justify-center">
 				<v-progress-circular indeterminate color="cyan" />
@@ -1251,7 +1251,7 @@ async function persistFooterOrder() {
     </v-dialog>
 
     <!-- Product Edit Dialog -->
-    <v-dialog v-model="productEditOpen" max-width="720" :persistent="savingProduct">
+    <v-dialog v-model="productEditOpen" max-width="720" persistent>
       <v-card class="card" elevation="2">
 			<v-overlay :model-value="savingProduct" contained class="align-center justify-center">
 				<v-progress-circular indeterminate color="cyan" />
@@ -1282,7 +1282,7 @@ async function persistFooterOrder() {
     </v-dialog>
 
     <!-- Confirmation Dialog -->
-    <v-dialog v-model="confirmOpen" max-width="520" :persistent="confirmLoading">
+    <v-dialog v-model="confirmOpen" max-width="520" persistent>
       <v-card class="card" elevation="2">
       <v-overlay :model-value="confirmLoading" contained class="align-center justify-center">
         <v-progress-circular indeterminate color="cyan" />

@@ -152,7 +152,7 @@ function confirmAdmin() {
       <small class="author muted">MC 😎</small>
     </div>
 
-    <v-dialog v-model="adminDialog" max-width="420">
+    <v-dialog v-model="adminDialog" max-width="420" persistent>
       <v-card class="card" elevation="2">
         <v-card-title>Administrare</v-card-title>
         <v-card-text class="stack">

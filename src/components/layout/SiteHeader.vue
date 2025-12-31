@@ -1,6 +1,11 @@
 <script setup>
 import { useRoute, RouterLink } from 'vue-router'
 import { ref } from 'vue'
+
+import headerBg from '../../assets/images/bg_header_wide.png'
+
+const headerBgCss = `url(${headerBg})`
+
 const route = useRoute()
 const isActive = (path) => route.path === path
 const drawer = ref(false)
@@ -14,8 +19,10 @@ const navItems = [
 </script>
 
 <template>
-  <v-app-bar app flat class="header" height="64">
-    <div class="container row sp-between">
+  <v-app-bar app flat class="header" height="64" :style="{ '--header-bg': headerBgCss }">
+    <div class="headerBg" aria-hidden="true" />
+
+    <div class="container row sp-between headerContent">
       <RouterLink class="brand row" to="/">
         <div class="logo">CMG</div>
         <div class="brand-text">
@@ -53,8 +60,36 @@ const navItems = [
 <style scoped>
 .header {
   backdrop-filter: saturate(140%) blur(8px);
-  background: linear-gradient(180deg, rgba(15,23,42,.85), rgba(15,23,42,.55));
+  background: transparent;
   border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.header :deep(.v-toolbar__content) {
+  position: relative;
+}
+
+.headerBg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(180deg, rgba(15,23,42,.85), rgba(15,23,42,.55)),
+    var(--header-bg);
+  background-position: center, center;
+  background-size: cover, cover;
+  background-repeat: no-repeat, no-repeat;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (max-width: 720px) {
+  .headerBg {
+    background-position: center, left center;
+  }
+}
+
+.headerContent {
+  position: relative;
+  z-index: 1;
 }
 .container {
   padding-block: .8rem;

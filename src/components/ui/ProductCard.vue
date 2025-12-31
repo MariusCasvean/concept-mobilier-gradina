@@ -35,10 +35,12 @@ const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim(
 
 <template>
   <v-card class="product" :class="{ discount: isDiscount }" elevation="2" :to="isCardClickable ? cardTo : undefined">
-    <v-img :src="image" height="200" cover alt="" />
+    <div class="media" aria-hidden="true">
+      <v-img class="mediaImg" :src="image" cover alt="" />
+    </div>
     <v-card-text class="info">
       <header class="row sp-between">
-        <strong>{{ title }}</strong>
+        <strong class="name">{{ title }}</strong>
         <span v-if="isDiscount && hasReduced" class="prices">
           <span class="oldPrice">{{ price }} RON</span>
           <span class="newPrice">{{ reducedPrice }} RON</span>
@@ -95,11 +97,34 @@ const hasReduced = computed(() => Boolean(String(props.reducedPrice || '').trim(
     radial-gradient(900px 520px at 110% 0%, color-mix(in srgb, var(--accent-2) 22%, transparent), transparent 60%),
     linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
 }
+.media {
+  height: 200px;
+  flex: 0 0 auto;
+}
+/* v-img renders a v-responsive wrapper; force it to fill our fixed media box */
+.media :deep(.v-responsive) {
+  height: 100% !important;
+}
+.media :deep(img) {
+  height: 100% !important;
+}
 .info {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: .5rem;
+}
+.info header {
+  min-width: 0;
+}
+.name {
+  min-width: 0;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.2;
 }
 .desc {
   display: -webkit-box;

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref } from 'vue'
 import { useDisplay } from 'vuetify'
 import { app } from '../lib/firebase'
 
@@ -26,6 +26,26 @@ const touched = reactive({
 })
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim())
+
+function forceScrollTop() {
+  try {
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
+  } catch {
+    window.scrollTo(0, 0)
+  }
+
+  if (document?.documentElement) document.documentElement.scrollTop = 0
+  if (document?.body) document.body.scrollTop = 0
+
+  // Vuetify / app scrollers (depends on layout)
+  const selectors = ['.v-main', '.v-main__scroller', '.v-application__wrap', '#app']
+  for (const selector of selectors) {
+    const nodeList = document.querySelectorAll(selector)
+    for (const element of nodeList) {
+      if (element && typeof element.scrollTop === 'number') element.scrollTop = 0
+    }
+  }
+}
 
 function resetTouched() {
   touched.name = false
@@ -60,14 +80,16 @@ async function send() {
 
   if (!canSend.value) {
     error.value = 'Completează toate câmpurile obligatorii.'
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    await nextTick()
+    forceScrollTop()
     return
   }
 
   const databaseURL = app?.options?.databaseURL
   if (!databaseURL) {
     error.value = 'Firebase nu este configurat (lipsește databaseURL).'
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    await nextTick()
+    forceScrollTop()
     return
   }
 
@@ -101,10 +123,14 @@ async function send() {
     contact.message = ''
     resetTouched()
     sent.value = true
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    await nextTick()
+    forceScrollTop()
+    requestAnimationFrame(forceScrollTop)
   } catch (e) {
     error.value = e?.message || String(e)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    await nextTick()
+    forceScrollTop()
+    requestAnimationFrame(forceScrollTop)
   } finally {
     sending.value = false
   }

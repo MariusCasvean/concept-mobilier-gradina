@@ -108,6 +108,14 @@ function confirmAdmin() {
             >
               <img class="social-icon" width="30" height="30" src="../../assets/images/whatsapp.png" alt="Whatsapp" />
             </a>
+            <!-- <a
+              href="#"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="TikTok"
+            >
+              <img class="social-icon" width="30" height="30" src="../../assets/images/tiktok2.png" alt="TikTok" />
+            </a> -->
           </div>
         </div>
 

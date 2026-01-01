@@ -18,6 +18,7 @@ const query = ref('')
 
 const display = useDisplay()
 const detailsBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
+const detailsDialogMaxWidth = computed(() => (display.mdAndUp.value ? 960 : 760))
 
 const category = ref(null)
 
@@ -174,7 +175,7 @@ watch(categorySlug, load)
       </div>
     </div>
 
-    <v-dialog v-model="detailsOpen" max-width="760" persistent scrollable>
+    <v-dialog v-model="detailsOpen" :max-width="detailsDialogMaxWidth" persistent scrollable>
       <v-card class="card modalCard modalCardWithClose" elevation="2">
         <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" density="comfortable" @click="closeDetails" />
         <v-card-title class="detailsTitle">
@@ -401,10 +402,16 @@ watch(categorySlug, load)
   gap: .25rem;
 }
 .k {
-  font-size: .85rem;
 }
 .v {
   line-height: 1.45;
+}
+
+@media (max-width: 599px) {
+  .k,
+  .v {
+    font-size: .85rem;
+  }
 }
 @media (min-width: 600px) {
   .grid {

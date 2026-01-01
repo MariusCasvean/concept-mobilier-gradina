@@ -63,6 +63,7 @@ const selectedDimensions = computed(() => {
 
 const display = useDisplay()
 const detailsBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
+const detailsDialogMaxWidth = computed(() => (display.mdAndUp.value ? 860 : 760))
 
 const categorySlugById = computed(() => {
   const map = new Map()
@@ -163,7 +164,7 @@ onMounted(async () => {
       />
     </div>
 
-    <v-dialog v-model="detailsOpen" max-width="760" persistent scrollable>
+    <v-dialog v-model="detailsOpen" :max-width="detailsDialogMaxWidth" persistent scrollable>
       <v-card class="card modalCard modalCardWithClose" elevation="2">
         <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" density="comfortable" @click="closeDetails" />
         <v-card-title class="detailsTitle">
@@ -301,9 +302,15 @@ onMounted(async () => {
   gap: .25rem;
 }
 .k {
-  font-size: .85rem;
 }
 .v {
   line-height: 1.45;
+}
+
+@media (max-width: 599px) {
+  .k,
+  .v {
+    font-size: .85rem;
+  }
 }
 </style>

@@ -312,6 +312,10 @@ const actionBtnSize = computed(() => (display.xs.value ? 'x-small' : 'small'))
 const dialogActionBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
 const isMobile = computed(() => display.xs.value)
 
+const categoryDialogMaxWidth = computed(() => (display.mdAndUp.value ? 860 : 720))
+const productDialogMaxWidth = computed(() => (display.mdAndUp.value ? 860 : 720))
+const confirmDialogMaxWidth = computed(() => (display.mdAndUp.value ? 600 : 520))
+
 const requiredRule = (v) => (String(v ?? '').trim() ? true : '')
 
 function hasPendingImage(fieldComponent) {
@@ -2455,7 +2459,7 @@ async function saveNewAdminPassword() {
     </div>
 
     <!-- Category Edit Dialog -->
-    <v-dialog v-model="categoryEditOpen" max-width="720" persistent scrollable>
+    <v-dialog v-model="categoryEditOpen" :max-width="categoryDialogMaxWidth" persistent scrollable>
       <v-card class="card modalCard modalCardWithClose" elevation="2">
 			<v-overlay :model-value="savingCategory" contained class="align-center justify-center">
 				<v-progress-circular indeterminate color="cyan" />
@@ -2489,7 +2493,7 @@ async function saveNewAdminPassword() {
     </v-dialog>
 
     <!-- Product Edit Dialog -->
-    <v-dialog v-model="productEditOpen" max-width="720" persistent scrollable>
+    <v-dialog v-model="productEditOpen" :max-width="productDialogMaxWidth" persistent scrollable>
       <v-card class="card modalCard modalCardWithClose" elevation="2">
 			<v-overlay :model-value="savingProduct" contained class="align-center justify-center">
 				<v-progress-circular indeterminate color="cyan" />
@@ -2546,7 +2550,7 @@ async function saveNewAdminPassword() {
     </v-dialog>
 
     <!-- Confirmation Dialog -->
-    <v-dialog v-model="confirmOpen" max-width="520" persistent scrollable>
+    <v-dialog v-model="confirmOpen" :max-width="confirmDialogMaxWidth" persistent scrollable>
       <v-card class="card modalCard" elevation="2">
       <v-overlay :model-value="confirmLoading" contained class="align-center justify-center">
         <v-progress-circular indeterminate color="cyan" />

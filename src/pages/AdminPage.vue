@@ -2456,11 +2456,11 @@ async function saveNewAdminPassword() {
 
     <!-- Category Edit Dialog -->
     <v-dialog v-model="categoryEditOpen" max-width="720" persistent scrollable>
-      <v-card class="card modalCard" elevation="2">
+      <v-card class="card modalCard modalCardWithClose" elevation="2">
 			<v-overlay :model-value="savingCategory" contained class="align-center justify-center">
 				<v-progress-circular indeterminate color="cyan" />
 			</v-overlay>
-        <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" @click="categoryEditOpen = false" />
+        <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" density="comfortable" @click="categoryEditOpen = false" />
         <v-card-title>{{ editingCategory ? 'Editează categoria' : 'Adaugă categorie nouă' }}</v-card-title>
         <v-card-text>
           <v-text-field v-model="categoryForm.title" label="Titlu *" variant="outlined" density="compact" autocomplete="off" :rules="[requiredRule]" />
@@ -2490,11 +2490,11 @@ async function saveNewAdminPassword() {
 
     <!-- Product Edit Dialog -->
     <v-dialog v-model="productEditOpen" max-width="720" persistent scrollable>
-      <v-card class="card modalCard" elevation="2">
+      <v-card class="card modalCard modalCardWithClose" elevation="2">
 			<v-overlay :model-value="savingProduct" contained class="align-center justify-center">
 				<v-progress-circular indeterminate color="cyan" />
 			</v-overlay>
-        <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" @click="productEditOpen = false" />
+        <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" density="comfortable" @click="productEditOpen = false" />
         <v-card-title>{{ editingProduct ? 'Editează produsul' : 'Adaugă produs' }}</v-card-title>
         <v-card-text>
           <v-text-field v-model="productForm.title" label="Titlu *" variant="outlined" density="compact" autocomplete="off" :rules="[requiredRule]" />
@@ -2551,7 +2551,6 @@ async function saveNewAdminPassword() {
       <v-overlay :model-value="confirmLoading" contained class="align-center justify-center">
         <v-progress-circular indeterminate color="cyan" />
       </v-overlay>
-        <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" @click="confirmOpen = false" />
         <v-card-title>{{ confirmTitle }}</v-card-title>
         <v-card-text class="muted">{{ confirmText }}</v-card-text>
         <v-card-actions>
@@ -2572,14 +2571,21 @@ async function saveNewAdminPassword() {
 .modalCard {
   position: relative;
 }
+
+.modalCardWithClose :deep(.v-card-title) {
+  margin-right: 2.5rem;
+}
 .modalCloseBtn {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 0.2rem;
+  right: 0.2rem;
   z-index: 10;
 }
 
 @media (min-width: 600px) {
+  .modalCardWithClose :deep(.v-card-title) {
+    margin-right: 3.5rem;
+  }
   .modalCloseBtn {
     right: 1.2rem;
   }

@@ -164,8 +164,8 @@ onMounted(async () => {
     </div>
 
     <v-dialog v-model="detailsOpen" max-width="760" persistent scrollable>
-      <v-card class="card modalCard" elevation="2">
-        <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" @click="closeDetails" />
+      <v-card class="card modalCard modalCardWithClose" elevation="2">
+        <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" density="comfortable" @click="closeDetails" />
         <v-card-title class="detailsTitle">
           {{ selectedProduct?.title || 'Detalii produs' }}
         </v-card-title>
@@ -235,14 +235,21 @@ onMounted(async () => {
 .modalCard {
   position: relative;
 }
+
+.modalCardWithClose :deep(.v-card-title) {
+  margin-right: 2.5rem;
+}
 .modalCloseBtn {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 0.2rem;
+  right: 0.2rem;
   z-index: 10;
 }
 
 @media (min-width: 600px) {
+  .modalCardWithClose :deep(.v-card-title) {
+    margin-right: 3.5rem;
+  }
   .modalCloseBtn {
     right: 1.2rem;
   }

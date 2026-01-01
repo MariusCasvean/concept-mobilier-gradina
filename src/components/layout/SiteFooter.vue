@@ -227,6 +227,12 @@ async function confirmAdmin() {
   display: grid;
   gap: .4rem;
   margin-top: .5rem;
+  justify-items: start;
+}
+
+.links :deep(a) {
+  width: fit-content;
+  justify-self: start;
 }
 .social-container {
   display: flex;

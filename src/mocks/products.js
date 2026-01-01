@@ -13,6 +13,9 @@ export const mockProducts = [
     showProductDiscount: true,
     image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=1200&auto=format&fit=crop',
     description: 'Set modern pentru terasă, materiale rezistente la intemperii.',
+    materials: ['Aluminiu vopsit', 'Rattan sintetic', 'Sticlă securizată'],
+    specifications: ['Rezistent la UV', 'Potrivit exterior', 'Întreținere ușoară'],
+    dimensions: ['Masă: 120 x 70 x 75 cm', 'Scaun: 58 x 62 x 86 cm'],
     details:
       'Set complet pentru terasă, ușor de întreținut. Potrivit pentru grădină, balcon sau foișor. Materiale rezistente la UV și umiditate.',
     createdAt: { seconds: 1 },

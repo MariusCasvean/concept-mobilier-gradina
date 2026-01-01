@@ -13,6 +13,15 @@ const product = ref(null)
 const loading = ref(true)
 const error = ref('')
 
+const descriptionLines = computed(() => {
+  const v = product.value?.description
+  if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim()).filter(Boolean)
+  return String(v ?? '')
+    .split(/\r?\n/)
+    .map((s) => String(s).trim())
+    .filter(Boolean)
+})
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -61,7 +70,9 @@ watch(() => `${categorySlug.value}/${productSlug.value}`, load)
           <span v-if="product?.showProductPrice !== false && String(product?.price || '').trim()" class="pill price">{{ product?.price }} RON</span>
         </div>
 
-        <p class="muted">{{ product?.description }}</p>
+        <div v-if="descriptionLines.length" class="stack" style="gap:.35rem;">
+          <p v-for="(line, idx) in descriptionLines" :key="idx" class="muted" style="margin:0;">{{ line }}</p>
+        </div>
         <p v-if="product?.details" class="details">{{ product.details }}</p>
       </v-card-text>
     </v-card>

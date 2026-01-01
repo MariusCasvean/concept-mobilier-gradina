@@ -145,10 +145,15 @@ const footerAddTrimmed = computed(() => String(footerAddValue.value ?? '').trim(
 const footerEditTrimmed = computed(() => String(footerEditValue.value ?? '').trim())
 
 const splitLines = (value) => {
+  if (Array.isArray(value)) return value.map((s) => String(s ?? '').trim()).filter(Boolean)
   return String(value ?? '')
     .split(/\r?\n/g)
     .map((s) => String(s).trim())
     .filter(Boolean)
+}
+
+const joinLines = (value, separator = ' ') => {
+  return splitLines(value).join(separator)
 }
 
 const contactInfoAddLabelTrimmed = computed(() => String(contactInfoAddLabel.value ?? '').trim())
@@ -343,7 +348,7 @@ const isProductValid = computed(() => {
   const discountOk = !Boolean(p.showProductDiscount) || !showPrice || (hasPrice && hasReduced)
   return (
     Boolean(String(p.title || '').trim()) &&
-    Boolean(String(p.description || '').trim()) &&
+    splitLines(p.description).length > 0 &&
     (!showPrice || hasPrice) &&
     discountOk &&
     productHasImage.value
@@ -518,7 +523,18 @@ function openProductEdit(p) {
   productForm.value = {
     id: p.id,
     title: p.title || '',
-    description: p.description || '',
+    description: Array.isArray(p?.description)
+      ? p.description.map((s) => String(s ?? '').trim()).filter(Boolean).join('\n')
+      : String(p?.description ?? ''),
+    materials: Array.isArray(p?.materials)
+      ? p.materials.map((s) => String(s ?? '').trim()).filter(Boolean).join('\n')
+      : String(p?.materials ?? ''),
+    specifications: Array.isArray(p?.specifications)
+      ? p.specifications.map((s) => String(s ?? '').trim()).filter(Boolean).join('\n')
+      : String(p?.specifications ?? ''),
+    dimensions: Array.isArray(p?.dimensions)
+      ? p.dimensions.map((s) => String(s ?? '').trim()).filter(Boolean).join('\n')
+      : String(p?.dimensions ?? ''),
     price: p.price || '',
     reducedPrice: p.reducedPrice || '',
     showProductPrice: p?.showProductPrice !== false,
@@ -536,6 +552,9 @@ function openProductCreate() {
     id: '',
     title: '',
     description: '',
+    materials: '',
+    specifications: '',
+    dimensions: '',
     price: '',
     reducedPrice: '',
     showProductPrice: false,
@@ -710,7 +729,10 @@ async function saveProduct() {
 
   const payload = {
     title,
-    description: String(p.description || '').trim(),
+    description: splitLines(p?.description),
+    materials: splitLines(p?.materials),
+    specifications: splitLines(p?.specifications),
+    dimensions: splitLines(p?.dimensions),
     price: String(p.price || '').trim(),
     reducedPrice: String(p.reducedPrice || '').trim(),
     showProductPrice: Boolean(p.showProductPrice),
@@ -1472,7 +1494,7 @@ async function saveNewAdminPassword() {
                   <div class="row sp-between">
                     <strong class="name mb-2">{{ p.title }}</strong>
                   </div>
-                  <p class="muted desc" :class="{ placeholder: !p.description }">{{ p.description || '' }}</p>
+                  <p class="muted desc" :class="{ placeholder: !joinLines(p.description) }">{{ joinLines(p.description) || '' }}</p>
                 </v-card-text>
               </v-card>
             </div>
@@ -1553,7 +1575,7 @@ async function saveNewAdminPassword() {
                   <div class="row sp-between align-center">
                     <span class="muted"><strong>Categorie:</strong> {{ getCategoryTitleById(p.categoryId) }}</span>
                   </div>
-                  <p class="muted desc" :class="{ placeholder: !p.description }"><strong>Descriere:</strong> {{ p.description || '' }}</p>
+                  <p class="muted desc" :class="{ placeholder: !joinLines(p.description) }"><strong>Descriere:</strong> {{ joinLines(p.description) || '' }}</p>
                   <div class="row d-flex productActions">
                     <v-btn :size="actionBtnSize" variant="outlined" color="cyan" :disabled="isAddingProduct" @click="openProductEdit(p)">
                       Editează produs
@@ -2431,11 +2453,12 @@ async function saveNewAdminPassword() {
     </div>
 
     <!-- Category Edit Dialog -->
-    <v-dialog v-model="categoryEditOpen" max-width="720" persistent>
-      <v-card class="card" elevation="2">
+    <v-dialog v-model="categoryEditOpen" max-width="720" persistent scrollable>
+      <v-card class="card modalCard" elevation="2">
 			<v-overlay :model-value="savingCategory" contained class="align-center justify-center">
 				<v-progress-circular indeterminate color="cyan" />
 			</v-overlay>
+        <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" @click="categoryEditOpen = false" />
         <v-card-title>{{ editingCategory ? 'Editează categoria' : 'Adaugă categorie nouă' }}</v-card-title>
         <v-card-text>
           <v-text-field v-model="categoryForm.title" label="Titlu *" variant="outlined" density="compact" autocomplete="off" :rules="[requiredRule]" />
@@ -2464,15 +2487,19 @@ async function saveNewAdminPassword() {
     </v-dialog>
 
     <!-- Product Edit Dialog -->
-    <v-dialog v-model="productEditOpen" max-width="720" persistent>
-      <v-card class="card" elevation="2">
+    <v-dialog v-model="productEditOpen" max-width="720" persistent scrollable>
+      <v-card class="card modalCard" elevation="2">
 			<v-overlay :model-value="savingProduct" contained class="align-center justify-center">
 				<v-progress-circular indeterminate color="cyan" />
 			</v-overlay>
+        <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" @click="productEditOpen = false" />
         <v-card-title>{{ editingProduct ? 'Editează produsul' : 'Adaugă produs' }}</v-card-title>
         <v-card-text>
           <v-text-field v-model="productForm.title" label="Titlu *" variant="outlined" density="compact" autocomplete="off" :rules="[requiredRule]" />
           <v-textarea v-model="productForm.description" label="Descriere *" variant="outlined" density="compact" rows="3" autocomplete="off" :rules="[requiredRule]" />
+          <v-textarea v-model="productForm.materials" label="Materiale" variant="outlined" density="compact" rows="3" autocomplete="off" />
+          <v-textarea v-model="productForm.specifications" label="Specificații tehnice" variant="outlined" density="compact" rows="3" autocomplete="off" />
+          <v-textarea v-model="productForm.dimensions" label="Dimensiuni" variant="outlined" density="compact" rows="3" autocomplete="off" />
           <v-text-field
             v-model="productForm.price"
             :label="isPriceRequired ? 'Preț (RON) *' : 'Preț (RON)'"
@@ -2517,11 +2544,12 @@ async function saveNewAdminPassword() {
     </v-dialog>
 
     <!-- Confirmation Dialog -->
-    <v-dialog v-model="confirmOpen" max-width="520" persistent>
-      <v-card class="card" elevation="2">
+    <v-dialog v-model="confirmOpen" max-width="520" persistent scrollable>
+      <v-card class="card modalCard" elevation="2">
       <v-overlay :model-value="confirmLoading" contained class="align-center justify-center">
         <v-progress-circular indeterminate color="cyan" />
       </v-overlay>
+        <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" @click="confirmOpen = false" />
         <v-card-title>{{ confirmTitle }}</v-card-title>
         <v-card-text class="muted">{{ confirmText }}</v-card-text>
         <v-card-actions>
@@ -2539,6 +2567,22 @@ async function saveNewAdminPassword() {
 </template>
 
 <style scoped>
+.modalCard {
+  position: relative;
+}
+.modalCloseBtn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 10;
+}
+
+@media (min-width: 600px) {
+  .modalCloseBtn {
+    right: 1.2rem;
+  }
+}
+
 .field {
   width: 100%;
   background: rgba(255,255,255,.06);

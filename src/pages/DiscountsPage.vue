@@ -26,6 +26,41 @@ const introLines = computed(() => {
 const detailsOpen = ref(false)
 const selectedProduct = ref(null)
 
+function splitLines(val) {
+  if (Array.isArray(val)) return val.map((s) => String(s ?? '').trim()).filter(Boolean)
+  return String(val ?? '')
+    .split(/\r?\n/)
+    .map((s) => String(s).trim())
+    .filter(Boolean)
+}
+
+function descriptionPreview(p) {
+  const lines = splitLines(p?.description)
+  return lines[0] || ''
+}
+
+const selectedDescriptionLines = computed(() => {
+  return splitLines(selectedProduct.value?.description)
+})
+
+const selectedMaterials = computed(() => {
+  const v = selectedProduct.value?.materials
+  if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim()).filter(Boolean)
+  return splitLines(v)
+})
+
+const selectedSpecifications = computed(() => {
+  const v = selectedProduct.value?.specifications
+  if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim()).filter(Boolean)
+  return splitLines(v)
+})
+
+const selectedDimensions = computed(() => {
+  const v = selectedProduct.value?.dimensions
+  if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim()).filter(Boolean)
+  return splitLines(v)
+})
+
 const display = useDisplay()
 const detailsBtnSize = computed(() => (display.xs.value ? 'small' : 'default'))
 
@@ -116,7 +151,7 @@ onMounted(async () => {
         :card-clickable="false"
         cta-behavior="emit"
         :title="p.title"
-        :description="p.description"
+        :description="descriptionPreview(p)"
         :image="p.image"
         :show-price="p?.showProductPrice !== false"
         :price="String(p.price || '')"
@@ -128,8 +163,9 @@ onMounted(async () => {
       />
     </div>
 
-    <v-dialog v-model="detailsOpen" max-width="760" persistent>
-      <v-card class="card" elevation="2">
+    <v-dialog v-model="detailsOpen" max-width="760" persistent scrollable>
+      <v-card class="card modalCard" elevation="2">
+        <v-btn class="modalCloseBtn" variant="text" icon="mdi-close" @click="closeDetails" />
         <v-card-title class="detailsTitle">
           {{ selectedProduct?.title || 'Detalii produs' }}
         </v-card-title>
@@ -143,9 +179,32 @@ onMounted(async () => {
             <div class="v">{{ selectedCategoryTitle || '—' }}</div>
           </div>
 
-          <div class="kv" v-if="selectedProduct?.description">
+          <div class="kv" v-if="selectedDescriptionLines.length">
             <div class="k muted">Descriere</div>
-            <div class="v">{{ selectedProduct.description }}</div>
+            <div class="v">
+              <div v-for="(line, idx) in selectedDescriptionLines" :key="idx">{{ line }}</div>
+            </div>
+          </div>
+
+          <div class="kv" v-if="selectedMaterials.length">
+            <div class="k muted">Materiale</div>
+            <div class="v">
+              <div v-for="(line, idx) in selectedMaterials" :key="idx">{{ line }}</div>
+            </div>
+          </div>
+
+          <div class="kv" v-if="selectedSpecifications.length">
+            <div class="k muted">Specificații tehnice</div>
+            <div class="v">
+              <div v-for="(line, idx) in selectedSpecifications" :key="idx">{{ line }}</div>
+            </div>
+          </div>
+
+          <div class="kv" v-if="selectedDimensions.length">
+            <div class="k muted">Dimensiuni</div>
+            <div class="v">
+              <div v-for="(line, idx) in selectedDimensions" :key="idx">{{ line }}</div>
+            </div>
           </div>
 
           <div class="kv" v-if="selectedProduct?.showProductPrice !== false && String(selectedProduct?.price || '').trim()">
@@ -173,6 +232,22 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.modalCard {
+  position: relative;
+}
+.modalCloseBtn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 10;
+}
+
+@media (min-width: 600px) {
+  .modalCloseBtn {
+    right: 1.2rem;
+  }
+}
+
 .grid {
   display: grid;
   grid-template-columns: 1fr;

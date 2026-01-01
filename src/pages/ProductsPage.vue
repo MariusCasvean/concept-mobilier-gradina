@@ -122,7 +122,7 @@ const filteredCategories = computed(() => {
           <div class="head">
             <div class="stack">
               <strong class="title">{{ c.title }}</strong>
-              <p class="muted">{{ c.description }}</p>
+              <p class="muted categoryDesc">{{ c.description }}</p>
             </div>
             <div class="thumb" aria-hidden="true">
               <img v-if="c.image" class="thumbImg" :src="c.image" alt="" />
@@ -178,6 +178,10 @@ const filteredCategories = computed(() => {
 .body {
   display: grid;
   gap: .5rem;
+}
+
+.categoryDesc {
+  white-space: pre-line;
 }
 .head {
   display: grid;

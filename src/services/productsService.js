@@ -78,15 +78,19 @@ function normalizeTextLines(val) {
     return s ? [s] : []
   }
   if (Array.isArray(val)) {
-    return val.map((x) => String(x ?? '').trim()).filter(Boolean)
+    return val.map((x) => String(x ?? '').trim())
   }
   if (typeof val === 'object') {
     return Object.entries(val)
       .sort(([a], [b]) => String(a).localeCompare(String(b)))
       .map(([, x]) => String(x ?? '').trim())
-      .filter(Boolean)
   }
   return []
+}
+
+function hasAnyNonEmptyTextLine(lines) {
+  if (!Array.isArray(lines)) return false
+  return lines.some((s) => String(s ?? '').trim())
 }
 
 function normalizeContactInfoList(val) {
@@ -448,11 +452,11 @@ export async function addContactInfoItem(label, texts) {
   if (!rtdb) throw new Error('Realtime Database nu este configurat.')
   const cleanLabel = String(label ?? '').trim()
   const cleanTexts = Array.isArray(texts)
-    ? texts.map((t) => String(t ?? '').trim()).filter(Boolean)
+    ? texts.map((t) => String(t ?? '').trim())
     : normalizeTextLines(texts)
 
   if (!cleanLabel) throw new Error('Eticheta este obligatorie.')
-  if (cleanTexts.length === 0) throw new Error('Adaugă cel puțin o linie de text.')
+  if (!hasAnyNonEmptyTextLine(cleanTexts)) throw new Error('Adaugă cel puțin o linie de text.')
 
   const existingSnap = await get(dbRef(rtdb, 'contactInfo'))
   const existing = normalizeContactInfoList(existingSnap.exists() ? existingSnap.val() : null)
@@ -475,12 +479,12 @@ export async function updateContactInfoItem(id, label, texts, rank) {
   const cleanId = String(id ?? '').trim()
   const cleanLabel = String(label ?? '').trim()
   const cleanTexts = Array.isArray(texts)
-    ? texts.map((t) => String(t ?? '').trim()).filter(Boolean)
+    ? texts.map((t) => String(t ?? '').trim())
     : normalizeTextLines(texts)
 
   if (!cleanId) throw new Error('ID invalid.')
   if (!cleanLabel) throw new Error('Eticheta este obligatorie.')
-  if (cleanTexts.length === 0) throw new Error('Adaugă cel puțin o linie de text.')
+  if (!hasAnyNonEmptyTextLine(cleanTexts)) throw new Error('Adaugă cel puțin o linie de text.')
 
   let finalRank = Number(rank)
   if (!Number.isFinite(finalRank)) {
@@ -510,10 +514,10 @@ export async function saveContactInfoRanks(items) {
     const id = String(items[i]?.id ?? '').trim()
     const label = String(items[i]?.label ?? '').trim()
     const texts = Array.isArray(items[i]?.texts)
-      ? items[i].texts.map((t) => String(t ?? '').trim()).filter(Boolean)
+      ? items[i].texts.map((t) => String(t ?? '').trim())
       : normalizeTextLines(items[i]?.texts)
 
-    if (!id || !label || texts.length === 0) continue
+    if (!id || !label || !hasAnyNonEmptyTextLine(texts)) continue
     payload[id] = { label, texts, rank: i }
   }
 

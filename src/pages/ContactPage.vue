@@ -34,7 +34,7 @@ const contactInfoSections = computed(() => {
     .map((s) => ({
       ...s,
       label: String(s?.label || '').trim(),
-      texts: Array.isArray(s?.texts) ? s.texts.map((t) => String(t ?? '').trim()).filter(Boolean) : [],
+      texts: Array.isArray(s?.texts) ? s.texts.map((t) => String(t ?? '').trim()) : [],
     }))
     .filter((s) => s.label)
 })
@@ -263,7 +263,7 @@ async function send() {
       <div v-if="hasContactInfo" class="card">
         <div v-for="s in contactInfoSections" :key="s.id || s.label" class="info-section">
           <strong>{{ s.label }}</strong>
-          <p v-for="(t, idx) in (s.texts || [])" :key="idx" class="muted">{{ t }}</p>
+          <p v-for="(t, idx) in (s.texts || [])" :key="idx" class="muted" style="margin:0; min-height: 1em;">{{ String(t ?? '').trim() ? t : '\u00A0' }}</p>
         </div>
       </div>
     </div>

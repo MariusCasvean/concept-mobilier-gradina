@@ -26,38 +26,55 @@ const detailsOpen = ref(false)
 const selectedProduct = ref(null)
 
 function splitLines(val) {
-  if (Array.isArray(val)) return val.map((s) => String(s ?? '').trim()).filter(Boolean)
-  return String(val ?? '')
+  if (Array.isArray(val)) return val.map((s) => String(s ?? '').trim())
+  const raw = String(val ?? '')
+  if (raw === '' || (raw.trim() === '' && !/\r|\n/.test(raw))) return []
+  return raw
     .split(/\r?\n/)
     .map((s) => String(s).trim())
-    .filter(Boolean)
 }
 
 function descriptionPreview(p) {
   const lines = splitLines(p?.description)
-  return lines[0] || ''
+  return lines.find((s) => String(s).trim()) || ''
 }
 
 const selectedDescriptionLines = computed(() => {
   return splitLines(selectedProduct.value?.description)
 })
 
+const hasSelectedDescription = computed(() => {
+  return selectedDescriptionLines.value.length > 0
+})
+
 const selectedMaterials = computed(() => {
   const v = selectedProduct.value?.materials
-  if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim()).filter(Boolean)
+  if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim())
   return splitLines(v)
+})
+
+const hasSelectedMaterials = computed(() => {
+  return selectedMaterials.value.length > 0
 })
 
 const selectedSpecifications = computed(() => {
   const v = selectedProduct.value?.specifications
-  if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim()).filter(Boolean)
+  if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim())
   return splitLines(v)
+})
+
+const hasSelectedSpecifications = computed(() => {
+  return selectedSpecifications.value.length > 0
 })
 
 const selectedDimensions = computed(() => {
   const v = selectedProduct.value?.dimensions
-  if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim()).filter(Boolean)
+  if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim())
   return splitLines(v)
+})
+
+const hasSelectedDimensions = computed(() => {
+  return selectedDimensions.value.length > 0
 })
 
 const categoryTitle = computed(() => category.value?.title || categorySlug.value)
@@ -191,31 +208,31 @@ watch(categorySlug, load)
             <div class="v">{{ categoryTitle }}</div>
           </div>
 
-          <div class="kv" v-if="selectedDescriptionLines.length">
+          <div class="kv" v-if="hasSelectedDescription">
             <div class="k muted">Descriere</div>
             <div class="v">
-              <div v-for="(line, idx) in selectedDescriptionLines" :key="idx">{{ line }}</div>
+              <div v-for="(line, idx) in selectedDescriptionLines" :key="idx" style="min-height: 1em;">{{ String(line ?? '').trim() ? line : '\u00A0' }}</div>
             </div>
           </div>
 
-          <div class="kv" v-if="selectedMaterials.length">
+          <div class="kv" v-if="hasSelectedMaterials">
             <div class="k muted">Materiale</div>
             <div class="v">
-              <div v-for="(line, idx) in selectedMaterials" :key="idx">{{ line }}</div>
+              <div v-for="(line, idx) in selectedMaterials" :key="idx" style="min-height: 1em;">{{ String(line ?? '').trim() ? line : '\u00A0' }}</div>
             </div>
           </div>
 
-          <div class="kv" v-if="selectedSpecifications.length">
+          <div class="kv" v-if="hasSelectedSpecifications">
             <div class="k muted">Specificații tehnice</div>
             <div class="v">
-              <div v-for="(line, idx) in selectedSpecifications" :key="idx">{{ line }}</div>
+              <div v-for="(line, idx) in selectedSpecifications" :key="idx" style="min-height: 1em;">{{ String(line ?? '').trim() ? line : '\u00A0' }}</div>
             </div>
           </div>
 
-          <div class="kv" v-if="selectedDimensions.length">
+          <div class="kv" v-if="hasSelectedDimensions">
             <div class="k muted">Dimensiuni</div>
             <div class="v">
-              <div v-for="(line, idx) in selectedDimensions" :key="idx">{{ line }}</div>
+              <div v-for="(line, idx) in selectedDimensions" :key="idx" style="min-height: 1em;">{{ String(line ?? '').trim() ? line : '\u00A0' }}</div>
             </div>
           </div>
 
@@ -401,8 +418,8 @@ watch(categorySlug, load)
   display: grid;
   gap: .25rem;
 }
-.k {
-}
+/* .k {
+} */
 .v {
   line-height: 1.45;
 }

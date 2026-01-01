@@ -15,11 +15,17 @@ const error = ref('')
 
 const descriptionLines = computed(() => {
   const v = product.value?.description
-  if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim()).filter(Boolean)
-  return String(v ?? '')
+  if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim())
+
+  const raw = String(v ?? '')
+  if (raw === '' || (raw.trim() === '' && !/\r|\n/.test(raw))) return []
+  return raw
     .split(/\r?\n/)
     .map((s) => String(s).trim())
-    .filter(Boolean)
+})
+
+const hasDescription = computed(() => {
+  return descriptionLines.value.length > 0
 })
 
 async function load() {
@@ -70,8 +76,8 @@ watch(() => `${categorySlug.value}/${productSlug.value}`, load)
           <span v-if="product?.showProductPrice !== false && String(product?.price || '').trim()" class="pill price">{{ product?.price }} RON</span>
         </div>
 
-        <div v-if="descriptionLines.length" class="stack" style="gap:.35rem;">
-          <p v-for="(line, idx) in descriptionLines" :key="idx" class="muted" style="margin:0;">{{ line }}</p>
+        <div v-if="hasDescription" class="stack" style="gap:.35rem;">
+          <p v-for="(line, idx) in descriptionLines" :key="idx" class="muted" style="margin:0; min-height: 1em;">{{ String(line ?? '').trim() ? line : '\u00A0' }}</p>
         </div>
         <p v-if="product?.details" class="details">{{ product.details }}</p>
       </v-card-text>

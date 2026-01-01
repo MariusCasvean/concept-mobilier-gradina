@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import draggable from 'vuedraggable'
 import { rtdb, storage } from '../lib/firebase'
-import { ref as dbRef, update, remove, push, set } from 'firebase/database'
+import { get, ref as dbRef, update, remove, push, set } from 'firebase/database'
 import { deleteObject, ref as storageRef } from 'firebase/storage'
 import { useAdminAuthStore } from '../stores/adminAuth'
 import {
@@ -147,15 +147,25 @@ const footerAddTrimmed = computed(() => String(footerAddValue.value ?? '').trim(
 const footerEditTrimmed = computed(() => String(footerEditValue.value ?? '').trim())
 
 const splitLines = (value) => {
-  if (Array.isArray(value)) return value.map((s) => String(s ?? '').trim()).filter(Boolean)
-  return String(value ?? '')
+  if (value == null) return []
+  if (Array.isArray(value)) return value.map((s) => String(s ?? '').trim())
+
+  const raw = String(value)
+  // Keep intentional blank lines, but avoid turning a plain empty input into [''].
+  if (raw === '' || (raw.trim() === '' && !/\r|\n/.test(raw))) return []
+
+  return raw
     .split(/\r?\n/g)
     .map((s) => String(s).trim())
-    .filter(Boolean)
+}
+
+const hasAnyNonEmptyLine = (value) => {
+  const lines = splitLines(value)
+  return lines.some((s) => String(s).trim())
 }
 
 const joinLines = (value, separator = ' ') => {
-  return splitLines(value).join(separator)
+  return splitLines(value).filter((s) => String(s).trim()).join(separator)
 }
 
 const contactInfoAddLabelTrimmed = computed(() => String(contactInfoAddLabel.value ?? '').trim())
@@ -178,8 +188,8 @@ const canSaveIntroContactEdit = computed(() => Boolean(introContactEditId.value)
 const canSaveFooterAdd = computed(() => Boolean(footerAddTrimmed.value))
 const canSaveFooterEdit = computed(() => Boolean(footerEditId.value) && Boolean(footerEditTrimmed.value))
 
-const canSaveContactInfoAdd = computed(() => Boolean(contactInfoAddLabelTrimmed.value) && contactInfoAddLines.value.length > 0)
-const canSaveContactInfoEdit = computed(() => Boolean(contactInfoEditId.value) && Boolean(contactInfoEditLabelTrimmed.value) && contactInfoEditLines.value.length > 0)
+const canSaveContactInfoAdd = computed(() => Boolean(contactInfoAddLabelTrimmed.value) && hasAnyNonEmptyLine(contactInfoAddTexts.value))
+const canSaveContactInfoEdit = computed(() => Boolean(contactInfoEditId.value) && Boolean(contactInfoEditLabelTrimmed.value) && hasAnyNonEmptyLine(contactInfoEditTexts.value))
 
 const introRequiredError = 'Câmp obligatoriu.'
 
@@ -354,7 +364,7 @@ const isProductValid = computed(() => {
   const discountOk = !Boolean(p.showProductDiscount) || !showPrice || (hasPrice && hasReduced)
   return (
     Boolean(String(p.title || '').trim()) &&
-    splitLines(p.description).length > 0 &&
+    hasAnyNonEmptyLine(p.description) &&
     (!showPrice || hasPrice) &&
     discountOk &&
     productHasImage.value
@@ -523,30 +533,47 @@ function openCategoryCreate() {
   categoryEditOpen.value = true
 }
 
-function openProductEdit(p) {
-  editingProduct.value = p
+async function openProductEdit(p) {
+  // NOTE: The list in-memory can be stale if RTDB was edited manually.
+  // Fetch latest snapshot so textarea line-count matches RTDB exactly.
+  const pid = String(p?.id ?? '')
+  let latest = p
+  if (rtdb && pid) {
+    try {
+      const snap = await get(dbRef(rtdb, `products/${pid}`))
+      const raw = snap.exists() ? snap.val() : null
+      if (raw && typeof raw === 'object') {
+        latest = { ...raw, id: pid }
+      }
+    } catch {
+      // Ignore and fall back to the in-memory product.
+    }
+  }
+
+  editingProduct.value = latest
   productImageFieldRef.value?.clearPendingFile?.()
+
   productForm.value = {
-    id: p.id,
-    title: p.title || '',
-    description: Array.isArray(p?.description)
-      ? p.description.map((s) => String(s ?? '').trim()).filter(Boolean).join('\n')
-      : String(p?.description ?? ''),
-    materials: Array.isArray(p?.materials)
-      ? p.materials.map((s) => String(s ?? '').trim()).filter(Boolean).join('\n')
-      : String(p?.materials ?? ''),
-    specifications: Array.isArray(p?.specifications)
-      ? p.specifications.map((s) => String(s ?? '').trim()).filter(Boolean).join('\n')
-      : String(p?.specifications ?? ''),
-    dimensions: Array.isArray(p?.dimensions)
-      ? p.dimensions.map((s) => String(s ?? '').trim()).filter(Boolean).join('\n')
-      : String(p?.dimensions ?? ''),
-    price: p.price || '',
-    reducedPrice: p.reducedPrice || '',
-    showProductPrice: p?.showProductPrice !== false,
-    showProductDiscount: Boolean(p.showProductDiscount),
-    background: p.background || DEFAULT_BG_COLOR,
-    image: p.image || '',
+    id: String(latest?.id ?? ''),
+    title: latest?.title || '',
+    description: Array.isArray(latest?.description)
+      ? latest.description.map((s) => String(s ?? '').trim()).join('\n')
+      : String(latest?.description ?? ''),
+    materials: Array.isArray(latest?.materials)
+      ? latest.materials.map((s) => String(s ?? '').trim()).join('\n')
+      : String(latest?.materials ?? ''),
+    specifications: Array.isArray(latest?.specifications)
+      ? latest.specifications.map((s) => String(s ?? '').trim()).join('\n')
+      : String(latest?.specifications ?? ''),
+    dimensions: Array.isArray(latest?.dimensions)
+      ? latest.dimensions.map((s) => String(s ?? '').trim()).join('\n')
+      : String(latest?.dimensions ?? ''),
+    price: latest?.price || '',
+    reducedPrice: latest?.reducedPrice || '',
+    showProductPrice: latest?.showProductPrice !== false,
+    showProductDiscount: Boolean(latest?.showProductDiscount),
+    background: latest?.background || DEFAULT_BG_COLOR,
+    image: latest?.image || '',
   }
   productEditOpen.value = true
 }
@@ -1472,7 +1499,7 @@ async function saveNewAdminPassword() {
             <div class="row sp-between categoryHead">
               <div class="stack">
                 <strong>{{ c.title }}</strong>
-                <p v-if="c.description" class="muted">{{ c.description }}</p>
+                <p v-if="c.description" class="muted" style="white-space: pre-line;">{{ c.description }}</p>
               </div>
               <div class="catThumb" aria-hidden="true">
                 <img v-if="c.image" class="catThumbImg" :src="c.image" alt="" />
@@ -2267,8 +2294,8 @@ async function saveNewAdminPassword() {
 
                     <div v-else class="stack" style="gap:.25rem;">
                       <strong>{{ t.label }}</strong>
-                      <p v-for="(line, idx) in (t.texts || [])" :key="idx" class="muted" style="margin:0;">
-                        {{ line }}
+                      <p v-for="(line, idx) in (t.texts || [])" :key="idx" class="muted" style="margin:0; min-height: 1em;">
+                        {{ String(line ?? '').trim() ? line : '\u00A0' }}
                       </p>
                       <div class="row d-flex justify-end" style="margin-top:.5rem;">
                         <v-btn :size="actionBtnSize" variant="outlined" color="cyan" :disabled="isAddingContactInfoSection" @click="startContactInfoEdit(t)">Editează secțiunea</v-btn>

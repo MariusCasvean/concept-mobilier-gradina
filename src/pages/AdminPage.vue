@@ -50,6 +50,8 @@ import { getAdminPassword, setAdminPassword } from '../services/adminPasswordSer
 
 const adminAuth = useAdminAuthStore()
 
+const DEFAULT_BG_COLOR = '#543c0e'
+
 const loading = ref(true)
 const error = ref('')
 const categories = ref([])
@@ -496,7 +498,7 @@ function openCategoryEdit(c) {
     id: c.id,
     title: c.title || '',
     description: c.description || '',
-    background: c.background || '#0b1220',
+    background: c.background || DEFAULT_BG_COLOR,
     image: c.image || '',
     productIds: linked.map((p) => p.id),
   }
@@ -510,7 +512,7 @@ function openCategoryCreate() {
     id: '',
     title: '',
     description: '',
-    background: '#0b1220',
+    background: DEFAULT_BG_COLOR,
     image: '',
     productIds: [],
   }
@@ -539,7 +541,7 @@ function openProductEdit(p) {
     reducedPrice: p.reducedPrice || '',
     showProductPrice: p?.showProductPrice !== false,
     showProductDiscount: Boolean(p.showProductDiscount),
-    background: p.background || '#0b1220',
+    background: p.background || DEFAULT_BG_COLOR,
     image: p.image || '',
   }
   productEditOpen.value = true
@@ -559,7 +561,7 @@ function openProductCreate() {
     reducedPrice: '',
     showProductPrice: false,
     showProductDiscount: false,
-    background: '#0b1220',
+    background: DEFAULT_BG_COLOR,
     image: '',
   }
   productEditOpen.value = true
@@ -651,7 +653,7 @@ async function saveCategory() {
   const payload = {
     title,
     description: String(c.description || '').trim(),
-    background: c.background || '#0b1220',
+    background: c.background || DEFAULT_BG_COLOR,
     image: c.image || '',
     updatedAt: Date.now(),
   }
@@ -737,7 +739,7 @@ async function saveProduct() {
     reducedPrice: String(p.reducedPrice || '').trim(),
     showProductPrice: Boolean(p.showProductPrice),
     showProductDiscount: Boolean(p.showProductDiscount),
-    background: p.background || '#0b1220',
+    background: p.background || DEFAULT_BG_COLOR,
     image: p.image || '',
     updatedAt: Date.now(),
   }

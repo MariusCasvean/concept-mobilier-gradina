@@ -39,7 +39,13 @@ const hasReduced = computed(() => hasPrice.value && Boolean(String(props.reduced
 <template>
   <v-card class="product" :class="{ discount: isDiscount }" elevation="2" :to="isCardClickable ? cardTo : undefined">
     <div class="media" aria-hidden="true">
-      <v-img class="mediaImg" :src="image" cover alt="" />
+      <v-img class="mediaImg" :src="image" cover alt="">
+        <template #placeholder>
+          <div class="d-flex align-center justify-center fill-height">
+            <v-progress-circular indeterminate size="28" width="3" color="cyan" />
+          </div>
+        </template>
+      </v-img>
     </div>
     <v-card-text class="info">
       <header class="row sp-between">

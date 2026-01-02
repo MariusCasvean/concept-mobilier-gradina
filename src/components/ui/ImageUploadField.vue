@@ -1,13 +1,18 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { storage } from '../../lib/firebase'
-import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage'
+import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage'
 
 const props = defineProps({
-  modelValue: { type: String, default: '' },
+  modelValue: { type: [String, Array], default: '' },
   folder: { type: String, default: 'uploads' },
   entityId: { type: String, default: '' },
   label: { type: String, default: 'Imagine' },
+  multiple: { type: Boolean, default: false },
+  showPreview: { type: Boolean, default: true },
+  allowDelete: { type: Boolean, default: false },
+  allowPrimary: { type: Boolean, default: false },
+  deleteFromStorage: { type: Boolean, default: true },
   storeAs: {
     type: String,
     default: 'storage',
@@ -15,13 +20,18 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'deleted'])
 
 const uploading = ref(false)
 const optimizing = ref(false)
 const error = ref('')
+const confirmOpen = ref(false)
+const confirmUrl = ref('')
+const confirmLoading = ref(false)
 const inputEl = ref(null)
 const pendingFile = ref(null)
+const pendingFiles = ref([])
+const pendingFilesObjectUrls = ref([])
 const optimizedFile = ref(null)
 const optimizedObjectUrl = ref('')
 let optimizePromise = null
@@ -32,6 +42,42 @@ const OPT_MAX_DIM = 1920
 const OPT_TARGET_BYTES = 500 * 1024
 const OPT_QUALITY_START = 0.82
 const OPT_QUALITY_MIN = 0.45
+
+const isMultiple = computed(() => Boolean(props.multiple))
+
+function normalizeUrlList(value) {
+  if (!value) return []
+  if (Array.isArray(value)) return value.map((x) => String(x ?? '').trim()).filter(Boolean)
+  const s = String(value ?? '').trim()
+  return s ? [s] : []
+}
+
+const modelUrls = computed(() => normalizeUrlList(props.modelValue))
+
+function mergeUrls(existing, added) {
+  const list = [...normalizeUrlList(existing), ...normalizeUrlList(added)]
+  const seen = new Set()
+  const out = []
+  for (const u of list) {
+    const s = String(u || '').trim()
+    if (!s) continue
+    if (seen.has(s)) continue
+    seen.add(s)
+    out.push(s)
+  }
+  return out
+}
+
+function isFirebaseStorageUrl(url) {
+  const s = String(url || '')
+  if (!s) return false
+  if (s.startsWith('data:')) return false
+  return (
+    s.startsWith('gs://') ||
+    s.includes('firebasestorage.googleapis.com') ||
+    s.includes('storage.googleapis.com')
+  )
+}
 
 function supportsWebPEncode() {
   try {
@@ -219,7 +265,42 @@ function openPicker() {
 }
 
 function onFileChange(e) {
-  const f = e?.target?.files?.[0] || null
+  const files = Array.from(e?.target?.files || [])
+
+  if (isMultiple.value) {
+    pendingFiles.value = files
+    if (pendingFilesObjectUrls.value.length) {
+      for (const u of pendingFilesObjectUrls.value) {
+        try {
+          URL.revokeObjectURL(u)
+        } catch {}
+      }
+    }
+    pendingFilesObjectUrls.value = files
+      .map((f) => {
+        try {
+          return URL.createObjectURL(f)
+        } catch {
+          return ''
+        }
+      })
+      .filter(Boolean)
+
+    // Reset single-file state.
+    pendingFile.value = null
+    optimizedFile.value = null
+    optimizing.value = false
+    optimizePromise = null
+    if (optimizedObjectUrl.value) {
+      try {
+        URL.revokeObjectURL(optimizedObjectUrl.value)
+      } catch {}
+      optimizedObjectUrl.value = ''
+    }
+    return
+  }
+
+  const f = files[0] || null
   pendingFile.value = f
 
   // Reset optimization state and preview when picking a new file.
@@ -255,6 +336,16 @@ function onFileChange(e) {
 }
 
 function clearPendingFile() {
+  if (pendingFilesObjectUrls.value.length) {
+    for (const u of pendingFilesObjectUrls.value) {
+      try {
+        URL.revokeObjectURL(u)
+      } catch {}
+    }
+  }
+  pendingFilesObjectUrls.value = []
+  pendingFiles.value = []
+
   if (optimizedObjectUrl.value) {
     try {
       URL.revokeObjectURL(optimizedObjectUrl.value)
@@ -280,8 +371,38 @@ const previewSrc = computed(() => {
   if (optimizedObjectUrl.value) return optimizedObjectUrl.value
   // If a new file was chosen but optimization hasn't finished yet, hide the old modelValue.
   if (pendingFile.value) return ''
-  return props.modelValue
+  return typeof props.modelValue === 'string' ? props.modelValue : ''
 })
+
+const previewItems = computed(() => {
+  if (!props.showPreview) return []
+  if (!isMultiple.value) {
+    const src = String(previewSrc.value || '').trim()
+    if (!src) return []
+    return [{ url: src, source: 'model' }]
+  }
+
+  const fromModel = modelUrls.value.map((url) => ({ url, source: 'model' }))
+  const fromPending = pendingFilesObjectUrls.value.map((url) => ({ url, source: 'pending' }))
+  return [...fromModel, ...fromPending]
+})
+
+const canPickPrimary = computed(() => Boolean(props.allowPrimary) && isMultiple.value && modelUrls.value.length > 0)
+
+function isPrimaryUrl(url) {
+  const u = String(url || '').trim()
+  if (!u) return false
+  return String(modelUrls.value[0] || '') === u
+}
+
+function setPrimaryUrl(url) {
+  if (!canPickPrimary.value) return
+  const u = String(url || '').trim()
+  if (!u) return
+  if (isPrimaryUrl(u)) return
+  const next = [u, ...modelUrls.value.filter((x) => String(x) !== u)]
+  emit('update:modelValue', next)
+}
 
 const optimizedSizeLabel = computed(() => {
   if (!pendingFile.value) return ''
@@ -293,6 +414,83 @@ const optimizedSizeLabel = computed(() => {
 
 async function uploadSelected(options = {}) {
   error.value = ''
+
+  if (isMultiple.value) {
+    if (!pendingFiles.value.length) return []
+
+    const mode = String(options?.storeAs || props.storeAs || 'storage')
+
+    if (mode === 'dataUrl') {
+      uploading.value = true
+      try {
+        const urls = []
+        for (const f of pendingFiles.value) {
+          const dataUrl = await fileToDataUrl(f)
+          if (dataUrl) urls.push(dataUrl)
+        }
+        emit('update:modelValue', mergeUrls(modelUrls.value, urls))
+        clearPendingFile()
+        return urls
+      } catch (e) {
+        error.value = e?.message || String(e)
+        throw e
+      } finally {
+        uploading.value = false
+      }
+    }
+
+    if (mode === 'auto' && !hasStorage.value) {
+      uploading.value = true
+      try {
+        const urls = []
+        for (const f of pendingFiles.value) {
+          const dataUrl = await fileToDataUrl(f)
+          if (dataUrl) urls.push(dataUrl)
+        }
+        emit('update:modelValue', mergeUrls(modelUrls.value, urls))
+        clearPendingFile()
+        return urls
+      } catch (e) {
+        error.value = e?.message || String(e)
+        throw e
+      } finally {
+        uploading.value = false
+      }
+    }
+
+    if (!hasStorage.value) {
+      error.value = 'Storage nu este configurat.'
+      throw new Error(error.value)
+    }
+
+    uploading.value = true
+    try {
+      const eid = String(options?.entityId ?? props.entityId ?? '').trim()
+      const base = eid ? `${props.folder}/${eid}` : props.folder
+
+      const uploadedUrls = []
+      for (let i = 0; i < pendingFiles.value.length; i++) {
+        const f = pendingFiles.value[i]
+        const optimized = await optimizeImageFile(f)
+        const safeName = String(optimized.name || f.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_')
+        const path = `${base}/${Date.now()}_${i}_${safeName}`
+        const r = storageRef(storage, path)
+        await uploadBytes(r, optimized)
+        const url = await getDownloadURL(r)
+        if (url) uploadedUrls.push(url)
+      }
+
+      emit('update:modelValue', mergeUrls(modelUrls.value, uploadedUrls))
+      clearPendingFile()
+      return uploadedUrls
+    } catch (e) {
+      error.value = e?.message || String(e)
+      throw e
+    } finally {
+      uploading.value = false
+    }
+  }
+
   if (!pendingFile.value) {
     return null
   }
@@ -372,10 +570,62 @@ async function uploadSelected(options = {}) {
   }
 }
 
+async function removeImageUrl(url) {
+  const clean = String(url || '').trim()
+  if (!clean) return
+
+  let nextValue = ''
+
+  if (isMultiple.value) {
+    nextValue = modelUrls.value.filter((x) => String(x) !== clean)
+    emit('update:modelValue', nextValue)
+  } else {
+    nextValue = ''
+    emit('update:modelValue', '')
+  }
+
+  if (!props.deleteFromStorage) return
+  if (!hasStorage.value) return
+  if (!isFirebaseStorageUrl(clean)) return
+  try {
+    await deleteObject(storageRef(storage, clean))
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+
+  return nextValue
+}
+
+function askDeleteImage(url) {
+  if (!props.allowDelete) return
+  if (confirmLoading.value) return
+  confirmUrl.value = String(url || '').trim()
+  if (!confirmUrl.value) return
+  confirmOpen.value = true
+}
+
+async function confirmDeleteImage() {
+  if (confirmLoading.value) return
+  const url = String(confirmUrl.value || '').trim()
+  if (!url) return
+  confirmLoading.value = true
+  try {
+    const nextValue = await removeImageUrl(url)
+    emit('deleted', {
+      removedUrl: url,
+      nextUrls: Array.isArray(nextValue) ? nextValue : normalizeUrlList(nextValue),
+    })
+    confirmOpen.value = false
+    confirmUrl.value = ''
+  } finally {
+    confirmLoading.value = false
+  }
+}
+
 defineExpose({
   uploadSelected,
   clearPendingFile,
-  hasPendingFile: computed(() => Boolean(pendingFile.value)),
+  hasPendingFile: computed(() => (isMultiple.value ? pendingFiles.value.length > 0 : Boolean(pendingFile.value))),
 })
 </script>
 
@@ -392,9 +642,35 @@ defineExpose({
 			<img class="preview" :src="previewSrc" alt="" />
 		</div>
 
+    <div v-else-if="previewItems.length" class="previewWrap previewGrid">
+      <div v-for="(item, idx) in previewItems" :key="`${item.source}-${idx}`" class="thumbWrap">
+        <img class="preview previewThumb" :src="item.url" alt="" />
+
+        <v-btn
+          v-if="canPickPrimary && item.source === 'model'"
+          class="starBtn"
+          :class="{ starBtnMain: isPrimaryUrl(item.url) }"
+          variant="text"
+          :icon="isPrimaryUrl(item.url) ? 'mdi-star' : 'mdi-star-outline'"
+          density="compact"
+          @click="setPrimaryUrl(item.url)"
+        />
+
+        <v-btn
+          v-if="allowDelete && item.source === 'model'"
+          class="deleteBtn"
+          variant="text"
+          icon="mdi-delete"
+          density="compact"
+          color="red"
+          @click="askDeleteImage(item.url)"
+        />
+      </div>
+    </div>
+
     <div v-else-if="pendingFile && optimizing" class="previewWrap">
       <div class="previewLoader" aria-label="Se optimizează imaginea">
-        <v-progress-circular indeterminate size="22" width="3" />
+        <v-progress-circular indeterminate size="22" width="3" color="cyan" />
       </div>
     </div>
 
@@ -404,11 +680,28 @@ defineExpose({
     </p>
 
     <div class="row">
-      <input ref="inputEl" class="hiddenInput" type="file" accept="image/*" :disabled="uploading" @change="onFileChange" />
-      <v-btn color="cyan" variant="outlined" :disabled="uploading" size="small" @click="openPicker">Încarcă imagine</v-btn>
+      <input ref="inputEl" class="hiddenInput" type="file" accept="image/*" :multiple="multiple" :disabled="uploading" @change="onFileChange" />
+      <v-btn color="cyan" variant="outlined" :disabled="uploading" size="small" @click="openPicker">
+        {{ multiple ? 'Încarcă imagini' : 'Încarcă imagine' }}
+      </v-btn>
     </div>
 
     <p v-if="error" class="error">{{ error }}</p>
+
+    <v-dialog v-model="confirmOpen" max-width="420" persistent>
+      <v-card class="card" elevation="2">
+        <v-overlay :model-value="confirmLoading" contained class="align-center justify-center">
+          <v-progress-circular indeterminate color="cyan" />
+        </v-overlay>
+        <v-card-title>Șterge imaginea?</v-card-title>
+        <v-card-text class="muted">Imaginea va fi eliminată din produs.</v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" :disabled="confirmLoading" @click="confirmOpen = false">Renunță</v-btn>
+          <v-btn color="red" variant="flat" :loading="confirmLoading" :disabled="confirmLoading" @click="confirmDeleteImage">Șterge</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -427,12 +720,67 @@ defineExpose({
 .previewWrap {
 	width: 100%;
 }
+.previewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .5rem;
+}
+
+@media (min-width: 960px) {
+  .previewGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.thumbWrap {
+  position: relative;
+}
 .preview {
   width: 100%;
   max-height: 180px;
   object-fit: cover;
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,.08);
+}
+.previewThumb {
+  height: 90px;
+  max-height: 90px;
+}
+.deleteBtn {
+  position: absolute;
+  right: .25rem;
+  bottom: .25rem;
+  background: rgba(255,255,255,.92);
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  /* border: 1px solid rgb(172, 167, 167); */
+}
+
+.deleteBtn :deep(.v-icon) {
+  font-size: 16px;
+}
+
+.starBtn {
+  position: absolute;
+  right: .25rem;
+  top: .25rem;
+  background: rgba(255,255,255,.92);
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  /* border: 1px solid rgb(172, 167, 167); */
+}
+
+.starBtn :deep(.v-icon) {
+  font-size: 16px;
+  color: #5878b9;
+}
+
+.starBtnMain :deep(.v-icon) {
+  color: #0b1220;
 }
 .previewLoader {
   width: 100%;

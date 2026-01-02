@@ -25,6 +25,51 @@ const introLines = computed(() => {
 
 const detailsOpen = ref(false)
 const selectedProduct = ref(null)
+const selectedImageIndex = ref(0)
+
+function getProductImages(p) {
+  const arr = Array.isArray(p?.images) ? p.images : []
+  const urls = arr.map((u) => String(u ?? '').trim()).filter(Boolean)
+  if (urls.length) return urls
+  const legacy = String(p?.image ?? '').trim()
+  return legacy ? [legacy] : []
+}
+
+function getPrimaryImage(p) {
+  return getProductImages(p)[0] || ''
+}
+
+const selectedProductImages = computed(() => getProductImages(selectedProduct.value))
+
+function prevImage() {
+  const n = selectedProductImages.value.length
+  if (n <= 1) return
+  selectedImageIndex.value = (selectedImageIndex.value - 1 + n) % n
+}
+
+function nextImage() {
+  const n = selectedProductImages.value.length
+  if (n <= 1) return
+  selectedImageIndex.value = (selectedImageIndex.value + 1) % n
+}
+
+const touchStartX = ref(0)
+const touchStartY = ref(0)
+function onTouchStart(e) {
+  const t = e?.touches?.[0]
+  if (!t) return
+  touchStartX.value = t.clientX
+  touchStartY.value = t.clientY
+}
+function onTouchEnd(e) {
+  const t = e?.changedTouches?.[0]
+  if (!t) return
+  const dx = t.clientX - touchStartX.value
+  const dy = t.clientY - touchStartY.value
+  if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return
+  if (dx < 0) nextImage()
+  else prevImage()
+}
 
 function splitLines(val) {
   if (Array.isArray(val)) return val.map((s) => String(s ?? '').trim())
@@ -112,6 +157,7 @@ const discounted = computed(() => {
 
 function openDetails(p) {
   selectedProduct.value = p
+  selectedImageIndex.value = 0
   detailsOpen.value = true
 }
 
@@ -170,7 +216,7 @@ onMounted(async () => {
         cta-behavior="emit"
         :title="p.title"
         :description="descriptionPreview(p)"
-        :image="p.image"
+        :image="getPrimaryImage(p)"
         :show-price="p?.showProductPrice !== false"
         :price="String(p.price || '')"
         :reduced-price="String(p.reducedPrice || '')"
@@ -188,8 +234,36 @@ onMounted(async () => {
           {{ selectedProduct?.title || 'Detalii produs' }}
         </v-card-title>
         <v-card-text class="details">
-          <div v-if="selectedProduct?.image" class="detailsImgWrap" aria-hidden="true">
-            <img class="detailsImg" :src="selectedProduct.image" alt="" />
+          <div
+            v-if="selectedProductImages.length"
+            class="detailsImgWrap carouselWrap"
+            aria-hidden="true"
+            @touchstart.passive="onTouchStart"
+            @touchend.passive="onTouchEnd"
+          >
+            <v-img class="detailsImg" :src="selectedProductImages[selectedImageIndex]" contain alt="">
+              <template #placeholder>
+                <div class="d-flex align-center justify-center fill-height">
+                  <v-progress-circular indeterminate size="32" width="3" color="cyan" />
+                </div>
+              </template>
+            </v-img>
+            <v-btn
+              v-if="selectedProductImages.length > 1"
+              class="carouselBtn left"
+              variant="text"
+              icon="mdi-chevron-left"
+              density="compact"
+              @click="prevImage"
+            />
+            <v-btn
+              v-if="selectedProductImages.length > 1"
+              class="carouselBtn right"
+              variant="text"
+              icon="mdi-chevron-right"
+              density="compact"
+              @click="nextImage"
+            />
           </div>
 
           <div class="kv">
@@ -295,6 +369,7 @@ onMounted(async () => {
   line-height: 1.25;
 }
 .detailsImgWrap {
+  position: relative;
   width: 100%;
   display: flex;
   justify-content: center;
@@ -305,14 +380,26 @@ onMounted(async () => {
 }
 .detailsImg {
   width: 100%;
-  height: auto;
-  max-height: min(70vh, 520px);
-  object-fit: contain;
-  display: block;
+  border-radius: 10px;
+  height: min(70vh, 520px);
+}
+
+.detailsImgWrap :deep(img) {
   border-radius: 10px;
 }
+
+.carouselBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(6px);
+}
+.carouselBtn.left { left: .35rem; }
+.carouselBtn.right { right: .35rem; }
 @media (max-width: 599px) {
-  .detailsImg { max-height: min(60vh, 420px); }
+  .detailsImg { height: min(60vh, 420px); }
 }
 .kv {
   display: grid;

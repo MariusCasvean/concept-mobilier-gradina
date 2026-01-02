@@ -13,6 +13,48 @@ const product = ref(null)
 const loading = ref(true)
 const error = ref('')
 
+const selectedImageIndex = ref(0)
+
+function getProductImages(p) {
+  const arr = Array.isArray(p?.images) ? p.images : []
+  const urls = arr.map((u) => String(u ?? '').trim()).filter(Boolean)
+  if (urls.length) return urls
+  const legacy = String(p?.image ?? '').trim()
+  return legacy ? [legacy] : []
+}
+
+const productImages = computed(() => getProductImages(product.value))
+
+function prevImage() {
+  const n = productImages.value.length
+  if (n <= 1) return
+  selectedImageIndex.value = (selectedImageIndex.value - 1 + n) % n
+}
+
+function nextImage() {
+  const n = productImages.value.length
+  if (n <= 1) return
+  selectedImageIndex.value = (selectedImageIndex.value + 1) % n
+}
+
+const touchStartX = ref(0)
+const touchStartY = ref(0)
+function onTouchStart(e) {
+  const t = e?.touches?.[0]
+  if (!t) return
+  touchStartX.value = t.clientX
+  touchStartY.value = t.clientY
+}
+function onTouchEnd(e) {
+  const t = e?.changedTouches?.[0]
+  if (!t) return
+  const dx = t.clientX - touchStartX.value
+  const dy = t.clientY - touchStartY.value
+  if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return
+  if (dx < 0) nextImage()
+  else prevImage()
+}
+
 const descriptionLines = computed(() => {
   const v = product.value?.description
   if (Array.isArray(v)) return v.map((s) => String(s ?? '').trim())
@@ -33,6 +75,7 @@ async function load() {
   error.value = ''
   try {
     product.value = await getProductBySlugs(categorySlug.value, productSlug.value)
+    selectedImageIndex.value = 0
   } catch (e) {
     error.value = e?.message || String(e)
   } finally {
@@ -66,7 +109,31 @@ watch(() => `${categorySlug.value}/${productSlug.value}`, load)
     </div>
 
     <v-card v-else class="product" elevation="2">
-      <v-img :src="product?.image" height="360" cover alt="" />
+      <div
+        v-if="productImages.length"
+        class="imgWrap"
+        aria-hidden="true"
+        @touchstart.passive="onTouchStart"
+        @touchend.passive="onTouchEnd"
+      >
+        <img class="img" :src="productImages[selectedImageIndex]" alt="" />
+        <v-btn
+          v-if="productImages.length > 1"
+          class="carouselBtn left"
+          variant="text"
+          icon="mdi-chevron-left"
+          density="compact"
+          @click="prevImage"
+        />
+        <v-btn
+          v-if="productImages.length > 1"
+          class="carouselBtn right"
+          variant="text"
+          icon="mdi-chevron-right"
+          density="compact"
+          @click="nextImage"
+        />
+      </div>
       <v-card-text class="content">
         <div class="row sp-between">
           <div class="stack">
@@ -89,6 +156,31 @@ watch(() => `${categorySlug.value}/${productSlug.value}`, load)
 .product {
   overflow: hidden;
 }
+.imgWrap {
+  position: relative;
+  width: 100%;
+  height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+.img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.carouselBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(6px);
+}
+.carouselBtn.left { left: .35rem; }
+.carouselBtn.right { right: .35rem; }
 .content {
   display: grid;
   gap: .75rem;

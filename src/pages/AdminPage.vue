@@ -57,6 +57,9 @@ const error = ref('')
 const categories = ref([])
 const products = ref([])
 
+const productImagesSilentSaving = ref(false)
+let productImagesQueuedUrls = null
+
 const introTexts = ref([])
 const introAddOpen = ref(false)
 const introAddValue = ref('')
@@ -267,7 +270,7 @@ const productForm = ref({
   showProductPrice: false,
   showProductDiscount: false,
   background: '#0b1220',
-  image: '',
+  images: [],
 })
 
 const categoryImageFieldRef = ref(null)
@@ -342,7 +345,11 @@ const categoryHasImage = computed(() => {
 })
 
 const productHasImage = computed(() => {
-  const urlOk = Boolean(String(productForm.value.image || '').trim())
+  const raw = productForm.value?.images
+  const urls = Array.isArray(raw)
+    ? raw.map((u) => String(u ?? '').trim()).filter(Boolean)
+    : []
+  const urlOk = urls.length > 0
   const pendingOk = hasPendingImage(productImageFieldRef.value)
   return urlOk || pendingOk
 })
@@ -573,7 +580,9 @@ async function openProductEdit(p) {
     showProductPrice: latest?.showProductPrice !== false,
     showProductDiscount: Boolean(latest?.showProductDiscount),
     background: latest?.background || DEFAULT_BG_COLOR,
-    image: latest?.image || '',
+    images: Array.isArray(latest?.images)
+      ? latest.images.map((u) => String(u ?? '').trim()).filter(Boolean)
+      : (String(latest?.image ?? '').trim() ? [String(latest.image).trim()] : []),
   }
   productEditOpen.value = true
 }
@@ -593,7 +602,7 @@ function openProductCreate() {
     showProductPrice: false,
     showProductDiscount: false,
     background: DEFAULT_BG_COLOR,
-    image: '',
+    images: [],
   }
   productEditOpen.value = true
 }
@@ -757,8 +766,12 @@ async function saveProduct() {
   }
 
   try {
-    const uploadedUrl = await productImageFieldRef.value?.uploadSelected?.({ entityId: productId, storeAs: 'storage' })
-    if (uploadedUrl) productForm.value.image = uploadedUrl
+    await productImageFieldRef.value?.uploadSelected?.({ entityId: productId, storeAs: 'storage' })
+
+    const images = Array.isArray(p.images)
+      ? p.images.map((u) => String(u ?? '').trim()).filter(Boolean)
+      : []
+    const primaryImage = images[0] || ''
 
   const payload = {
     title,
@@ -771,7 +784,8 @@ async function saveProduct() {
     showProductPrice: Boolean(p.showProductPrice),
     showProductDiscount: Boolean(p.showProductDiscount),
     background: p.background || DEFAULT_BG_COLOR,
-    image: p.image || '',
+    image: primaryImage,
+    images,
     updatedAt: Date.now(),
   }
 
@@ -796,6 +810,58 @@ async function saveProduct() {
   }
 }
 
+async function persistProductImagesSilently(nextUrls) {
+  if (!rtdb) return
+  if (!isEditingProduct.value) return
+  const productId = String(productForm.value?.id || '').trim()
+  if (!productId) return
+
+  const urls = Array.isArray(nextUrls)
+    ? nextUrls.map((u) => String(u ?? '').trim()).filter(Boolean)
+    : []
+
+  // Keep only the latest requested state if multiple deletes happen quickly.
+  if (productImagesSilentSaving.value) {
+    productImagesQueuedUrls = urls
+    return
+  }
+
+  productImagesSilentSaving.value = true
+  try {
+    await update(dbRef(rtdb, `products/${productId}`), {
+      images: urls,
+      image: urls[0] || '',
+      updatedAt: Date.now(),
+    })
+
+    // Update local in-memory lists too, so UI doesn't keep a stale/broken URL.
+    if (editingProduct.value && String(editingProduct.value?.id || '') === productId) {
+      editingProduct.value = { ...editingProduct.value, images: urls, image: urls[0] || '' }
+    }
+    const idx = products.value.findIndex((p) => String(p?.id || '') === productId)
+    if (idx >= 0) {
+      products.value[idx] = { ...products.value[idx], images: urls, image: urls[0] || '' }
+    }
+  } catch (e) {
+    // Silent background save: don't block the user, but surface an error.
+    error.value = e?.message || String(e)
+    showError(error.value)
+  } finally {
+    productImagesSilentSaving.value = false
+    if (productImagesQueuedUrls) {
+      const queued = productImagesQueuedUrls
+      productImagesQueuedUrls = null
+      // Re-run once with the latest queued state.
+      await persistProductImagesSilently(queued)
+    }
+  }
+}
+
+function onProductImagesDeleted(payload) {
+  // Payload comes from ImageUploadField: { removedUrl, nextUrls }
+  persistProductImagesSilently(payload?.nextUrls)
+}
+
 async function deleteCategory(categoryId) {
   if (!rtdb) return
 
@@ -816,9 +882,12 @@ async function deleteCategory(categoryId) {
 async function deleteProduct(productId) {
   if (!rtdb) return
 	const product = products.value.find((p) => String(p?.id ?? '') === String(productId))
-	const productImageUrl = product?.image || ''
+  const productImages = Array.isArray(product?.images)
+    ? product.images.map((u) => String(u ?? '').trim()).filter(Boolean)
+    : []
+  if (!productImages.length && String(product?.image || '').trim()) productImages.push(String(product.image).trim())
   await remove(dbRef(rtdb, `products/${productId}`))
-	await deleteStorageObjectByUrl(productImageUrl)
+  await Promise.all(productImages.map((u) => deleteStorageObjectByUrl(u)))
   await refresh()
 }
 
@@ -1520,7 +1589,13 @@ async function saveNewAdminPassword() {
                 :style="{ borderLeftColor: p.background || 'transparent' }"
               >
                 <div class="imgSlot" aria-hidden="true">
-                  <v-img v-if="p.image" :src="p.image" height="120" cover alt="" />
+                  <v-img v-if="p.image" :src="p.image" height="120" cover alt="">
+                    <template #placeholder>
+                      <div class="d-flex align-center justify-center fill-height">
+                        <v-progress-circular indeterminate size="28" width="3" color="cyan" />
+                      </div>
+                    </template>
+                  </v-img>
                   <div v-else class="imgPlaceholder" />
                 </div>
                 <v-card-text class="info">
@@ -1592,7 +1667,13 @@ async function saveNewAdminPassword() {
                 :style="{ borderLeftColor: p.background || 'transparent' }"
               >
                 <div class="productSimpleMedia" aria-hidden="true">
-                  <v-img v-if="p.image" :src="p.image" height="120" cover alt="" />
+                  <v-img v-if="p.image" :src="p.image" height="120" cover alt="">
+                    <template #placeholder>
+                      <div class="d-flex align-center justify-center fill-height">
+                        <v-progress-circular indeterminate size="28" width="3" color="cyan" />
+                      </div>
+                    </template>
+                  </v-img>
                   <div v-else class="imgPlaceholder" />
                 </div>
 
@@ -2566,7 +2647,18 @@ async function saveNewAdminPassword() {
             label="Afișează prețul produsului"
           />
           <v-text-field v-model="productForm.background" label="Fundal" variant="outlined" density="compact" type="color" autocomplete="off" />
-          <ImageUploadField ref="productImageFieldRef" v-model="productForm.image" folder="products" :entity-id="productForm.id" store-as="storage" label="Imagine produs *" />
+          <ImageUploadField
+            ref="productImageFieldRef"
+            v-model="productForm.images"
+            folder="products"
+            :entity-id="productForm.id"
+            store-as="storage"
+            label="Imagini produs *"
+            multiple
+            allow-delete
+            :allow-primary="Boolean(editingProduct) && Boolean(productForm.id)"
+            @deleted="onProductImagesDeleted"
+          />
         </v-card-text>
         <v-card-actions>
           <v-spacer />

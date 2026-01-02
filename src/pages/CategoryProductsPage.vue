@@ -354,10 +354,7 @@ watch(categorySlug, load)
 
 .resultsPill {
   flex-shrink: 0;
-  border-color: rgba(
-    var(--v-theme-on-surface),
-    var(--v-field-border-opacity, var(--v-medium-emphasis-opacity, 0.38))
-  );
+  border-color: rgba(var(--v-theme-on-surface), 0.55);
 }
 
 .title {

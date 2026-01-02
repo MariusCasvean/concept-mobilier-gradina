@@ -130,7 +130,6 @@ watch(categorySlug, load)
         <div class="stack headerStack">
           <div class="row sp-between breadcrumbRow">
             <RouterLink v-if="!loading" class="muted breadcrumbLink" to="/products">← Înapoi la categorii</RouterLink>
-            <span v-if="!loading" class="pill countPill">{{ filteredProducts.length }} {{ filteredProducts.length === 1 ? 'produs' : 'produse' }}</span>
           </div>
           <h1 class="title">{{ category?.title }}</h1>
         </div>
@@ -149,16 +148,21 @@ watch(categorySlug, load)
 
     <div v-else class="stack">
       <div v-if="!loading && products.length" class="stickySearch">
-        <v-text-field
-          v-model="query"
-          variant="outlined"
-          density="compact"
-          hide-details
-          clearable
-          append-inner-icon="mdi-magnify"
-          label="Caută produs"
-          autocomplete="off"
-        />
+        <div class="stickySearchRow">
+          <div class="searchField">
+            <v-text-field
+              v-model="query"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+              append-inner-icon="mdi-magnify"
+              label="Caută produs"
+              autocomplete="off"
+            />
+          </div>
+          <span class="pill resultsPill">{{ filteredProducts.length }} {{ filteredProducts.length === 1 ? 'produs' : 'produse' }}</span>
+        </div>
       </div>
 
       <div v-if="products.length > 0 && filteredProducts.length === 0" class="card">
@@ -298,6 +302,18 @@ watch(categorySlug, load)
   backdrop-filter: blur(100px);
 }
 
+.stickySearchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.searchField {
+  flex: 1;
+  min-width: 0;
+}
+
 .stickySearch :deep(.v-field) {
   background: transparent;
 }
@@ -328,11 +344,11 @@ watch(categorySlug, load)
 }
 
 .breadcrumbLink,
-.countPill {
+.resultsPill {
   white-space: nowrap;
 }
 
-.countPill {
+.resultsPill {
   flex-shrink: 0;
 }
 

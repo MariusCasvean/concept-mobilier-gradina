@@ -70,9 +70,6 @@ const filteredCategories = computed(() => {
   <div class="stack-lg">
     <header class="row sp-between">
       <h1>Categorii</h1>
-      <div v-if="!loading" class="row">
-        <span class="pill">{{ filteredCategories.length }} {{ filteredCategories.length === 1 ? 'categorie' : 'categorii' }}</span>
-      </div>
       <div v-if="!loading" class="stack mt-5" style="width: 100%;">
         <p v-for="(t, idx) in introLines" :key="idx" class="muted">{{ t }}</p>
       </div>
@@ -87,16 +84,21 @@ const filteredCategories = computed(() => {
 
     <div v-else class="stack">
       <div class="stickySearch">
-        <v-text-field
-          v-model="query"
-          variant="outlined"
-          density="compact"
-          hide-details
-          clearable
-          append-inner-icon="mdi-magnify"
-          label="Caută categorie"
-          autocomplete="off"
-        />
+        <div class="stickySearchRow">
+          <div class="searchField">
+            <v-text-field
+              v-model="query"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+              append-inner-icon="mdi-magnify"
+              label="Caută categorie"
+              autocomplete="off"
+            />
+          </div>
+          <span class="pill resultsPill">{{ filteredCategories.length }} {{ filteredCategories.length === 1 ? 'categorie' : 'categorii' }}</span>
+        </div>
       </div>
 
       <div v-if="filteredCategories.length === 0" class="card">
@@ -146,6 +148,23 @@ const filteredCategories = computed(() => {
   z-index: 10;
   padding: .5rem;
   backdrop-filter: blur(100px);
+}
+
+.stickySearchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.searchField {
+  flex: 1;
+  min-width: 0;
+}
+
+.resultsPill {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 @media (max-width: 599px) {

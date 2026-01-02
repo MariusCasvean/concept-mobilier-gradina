@@ -165,6 +165,10 @@ const filteredCategories = computed(() => {
 .resultsPill {
   flex-shrink: 0;
   white-space: nowrap;
+  border-color: rgba(
+    var(--v-theme-on-surface),
+    var(--v-field-border-opacity, var(--v-medium-emphasis-opacity, 0.38))
+  );
 }
 
 @media (max-width: 599px) {

@@ -43,7 +43,7 @@ const navItems = [
     </div>
   </v-app-bar>
 
-  <v-navigation-drawer v-model="drawer" temporary width="280" location="right">
+  <v-navigation-drawer v-model="drawer" temporary width="140" location="right">
     <v-list density="comfortable">
       <v-list-item
         v-for="i in navItems"

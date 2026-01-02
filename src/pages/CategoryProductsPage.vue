@@ -127,12 +127,12 @@ watch(categorySlug, load)
   <div class="stack-lg">
     <header class="stack">
       <div class="row sp-between">
-        <div class="stack">
-          <RouterLink v-if="!loading" class="muted" to="/products">← Înapoi la categorii</RouterLink>
-          <h1 class="title">
-            {{ category?.title }}
-            <span v-if="!loading" class="pill">{{ products.length }} {{ products.length === 1 ? 'produs' : 'produse' }}</span>
-          </h1>
+        <div class="stack headerStack">
+          <div class="row sp-between breadcrumbRow">
+            <RouterLink v-if="!loading" class="muted breadcrumbLink" to="/products">← Înapoi la categorii</RouterLink>
+            <span v-if="!loading" class="pill countPill">{{ filteredProducts.length }} {{ filteredProducts.length === 1 ? 'produs' : 'produse' }}</span>
+          </div>
+          <h1 class="title">{{ category?.title }}</h1>
         </div>
       </div>
       <p v-if="!loading && products.length" class="muted">
@@ -313,11 +313,31 @@ watch(categorySlug, load)
   }
 }
 
-.title {
+.breadcrumbRow {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: .75rem;
-  align-items: baseline;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.headerStack {
+  flex: 1;
+  min-width: 0;
+}
+
+.breadcrumbLink,
+.countPill {
+  white-space: nowrap;
+}
+
+.countPill {
+  flex-shrink: 0;
+}
+
+.title {
+  display: block;
 }
 .grid {
   display: grid;

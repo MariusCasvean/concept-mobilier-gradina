@@ -71,7 +71,7 @@ const filteredCategories = computed(() => {
     <header class="row sp-between">
       <h1>Categorii</h1>
       <div v-if="!loading" class="row">
-        <span class="pill">{{ categories.length }} categorii</span>
+        <span class="pill">{{ filteredCategories.length }} {{ filteredCategories.length === 1 ? 'categorie' : 'categorii' }}</span>
       </div>
       <div v-if="!loading" class="stack mt-5" style="width: 100%;">
         <p v-for="(t, idx) in introLines" :key="idx" class="muted">{{ t }}</p>

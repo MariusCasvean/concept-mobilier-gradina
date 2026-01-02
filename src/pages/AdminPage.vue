@@ -1559,7 +1559,7 @@ async function saveNewAdminPassword() {
         <div class="row sp-between">
           <h2 class="sectionTitle">Produse</h2>
           <div class="row" style="gap: .25rem;">
-            <span class="pill">{{ products.length }} produse</span>
+            <span class="pill">{{ products.length }} {{ products.length === 1 ? 'produs' : 'produse' }}</span>
             <v-btn
               :size="actionBtnSize"
               variant="text"

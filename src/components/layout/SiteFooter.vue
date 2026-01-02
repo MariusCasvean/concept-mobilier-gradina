@@ -156,7 +156,7 @@ async function confirmAdmin() {
         </div>
       </div>
       <div class="row sp-between">
-        <div class="row muted">
+        <div class="row muted copyright">
           <small>© {{ new Date().getFullYear() }} - Concept Mobilier Grădină. Toate drepturile rezervate.</small>
         </div>
       </div>
@@ -296,7 +296,8 @@ async function confirmAdmin() {
 }
 .author {
   display: flex;
-  margin-top: 30px;
+  margin-top: 10px;
+  font-size: 1rem;
 }
 @media (max-width: 920px) {
   .grid {
@@ -304,6 +305,12 @@ async function confirmAdmin() {
   }
   .anpc-icon {
     height: 30px;
+  }
+  .copyright {
+    font-size: 0.85rem;
+  }
+  .author {
+    font-size: 0.6rem;
   }
 }
 </style>

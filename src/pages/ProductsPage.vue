@@ -176,6 +176,10 @@ const filteredCategories = computed(() => {
     padding-left: max(clamp(12px, 4vw, 24px), env(safe-area-inset-left));
     padding-right: max(clamp(12px, 4vw, 24px), env(safe-area-inset-right));
   }
+
+  .stickySearch :deep(input) {
+    font-size: 16px;
+  }
 }
 
 .stickySearch :deep(.v-field) {

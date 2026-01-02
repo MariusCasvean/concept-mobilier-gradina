@@ -327,6 +327,10 @@ watch(categorySlug, load)
     padding-left: max(clamp(12px, 4vw, 24px), env(safe-area-inset-left));
     padding-right: max(clamp(12px, 4vw, 24px), env(safe-area-inset-right));
   }
+
+  .stickySearch :deep(input) {
+    font-size: 16px;
+  }
 }
 
 .breadcrumbRow {

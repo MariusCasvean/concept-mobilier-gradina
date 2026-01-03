@@ -610,7 +610,6 @@ async function removeImageUrl(url) {
 function askDeleteImage(url) {
   if (!props.allowDelete) return
   if (confirmLoading.value) return
-  if (isDeleteDisabled(url)) return
   confirmUrl.value = String(url || '').trim()
   if (!confirmUrl.value) return
   confirmOpen.value = true
@@ -669,13 +668,12 @@ defineExpose({
         />
 
         <v-btn
-          v-if="allowDelete && item.source === 'model'"
+          v-if="allowDelete && item.source === 'model' && !isDeleteDisabled(item.url)"
           class="deleteBtn"
           variant="text"
           icon="mdi-delete"
           density="compact"
           color="red"
-          :disabled="isDeleteDisabled(item.url)"
           @click="askDeleteImage(item.url)"
         />
       </div>
@@ -762,12 +760,11 @@ defineExpose({
   position: absolute;
   right: .25rem;
   bottom: .25rem;
-  background: rgba(255,255,255,.92);
+  background: rgba(255,255,255,.9);
   width: 24px;
   height: 24px;
   min-width: 24px;
   min-height: 24px;
-  /* border: 1px solid rgb(172, 167, 167); */
 }
 
 .deleteBtn :deep(.v-icon) {
@@ -778,13 +775,12 @@ defineExpose({
   position: absolute;
   right: .25rem;
   top: .25rem;
-  background: rgba(255,255,255,.92);
   width: 24px;
   height: 24px;
   min-width: 24px;
   min-height: 24px;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  /* border: 1px solid rgb(172, 167, 167); */
+  opacity: 0.9;
 }
 
 .starBtn :deep(.v-icon) {

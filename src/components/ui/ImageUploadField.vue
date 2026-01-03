@@ -389,6 +389,17 @@ const previewItems = computed(() => {
 
 const canPickPrimary = computed(() => Boolean(props.allowPrimary) && isMultiple.value && modelUrls.value.length > 0)
 
+const isLastRequiredImage = computed(() => isMultiple.value && modelUrls.value.length <= 1)
+
+function isDeleteDisabled(url) {
+  const clean = String(url || '').trim()
+  if (!clean) return true
+  // Products require at least one image; in multi-image mode we prevent deleting
+  // the last remaining saved image.
+  if (isLastRequiredImage.value) return true
+  return false
+}
+
 function isPrimaryUrl(url) {
   const u = String(url || '').trim()
   if (!u) return false
@@ -599,6 +610,7 @@ async function removeImageUrl(url) {
 function askDeleteImage(url) {
   if (!props.allowDelete) return
   if (confirmLoading.value) return
+  if (isDeleteDisabled(url)) return
   confirmUrl.value = String(url || '').trim()
   if (!confirmUrl.value) return
   confirmOpen.value = true
@@ -663,6 +675,7 @@ defineExpose({
           icon="mdi-delete"
           density="compact"
           color="red"
+          :disabled="isDeleteDisabled(item.url)"
           @click="askDeleteImage(item.url)"
         />
       </div>

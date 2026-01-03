@@ -14,6 +14,9 @@ const loading = ref(true)
 const error = ref('')
 
 const selectedImageIndex = ref(0)
+const slideDir = ref('next')
+
+const slideTransitionName = computed(() => (slideDir.value === 'next' ? 'slide-left' : 'slide-right'))
 
 function getProductImages(p) {
   const arr = Array.isArray(p?.images) ? p.images : []
@@ -28,12 +31,14 @@ const productImages = computed(() => getProductImages(product.value))
 function prevImage() {
   const n = productImages.value.length
   if (n <= 1) return
+  slideDir.value = 'prev'
   selectedImageIndex.value = (selectedImageIndex.value - 1 + n) % n
 }
 
 function nextImage() {
   const n = productImages.value.length
   if (n <= 1) return
+  slideDir.value = 'next'
   selectedImageIndex.value = (selectedImageIndex.value + 1) % n
 }
 
@@ -76,6 +81,7 @@ async function load() {
   try {
     product.value = await getProductBySlugs(categorySlug.value, productSlug.value)
     selectedImageIndex.value = 0
+    slideDir.value = 'next'
   } catch (e) {
     error.value = e?.message || String(e)
   } finally {
@@ -116,7 +122,21 @@ watch(() => `${categorySlug.value}/${productSlug.value}`, load)
         @touchstart.passive="onTouchStart"
         @touchend.passive="onTouchEnd"
       >
-        <img class="img" :src="productImages[selectedImageIndex]" alt="" />
+        <Transition :name="slideTransitionName">
+          <v-img
+            :key="productImages[selectedImageIndex]"
+            class="img"
+            :src="productImages[selectedImageIndex]"
+            cover
+            alt=""
+          >
+            <template #placeholder>
+              <div class="d-flex align-center justify-center fill-height">
+                <v-progress-circular indeterminate size="36" width="3" color="cyan" />
+              </div>
+            </template>
+          </v-img>
+        </Transition>
         <v-btn
           v-if="productImages.length > 1"
           class="carouselBtn left"
@@ -164,12 +184,40 @@ watch(() => `${categorySlug.value}/${productSlug.value}`, load)
   align-items: center;
   justify-content: center;
   background: transparent;
+  overflow: hidden;
 }
 .img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  display: block;
+}
+
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 260ms ease, opacity 260ms ease;
+}
+
+.slide-left-enter-from {
+  transform: translateX(14%);
+  opacity: 0;
+}
+
+.slide-left-leave-to {
+  transform: translateX(-14%);
+  opacity: 0;
+}
+
+.slide-right-enter-from {
+  transform: translateX(-14%);
+  opacity: 0;
+}
+
+.slide-right-leave-to {
+  transform: translateX(14%);
+  opacity: 0;
 }
 .carouselBtn {
   position: absolute;

@@ -25,6 +25,9 @@ const category = ref(null)
 const detailsOpen = ref(false)
 const selectedProduct = ref(null)
 const selectedImageIndex = ref(0)
+const slideDir = ref('next')
+
+const slideTransitionName = computed(() => (slideDir.value === 'next' ? 'slide-left' : 'slide-right'))
 
 function getProductImages(p) {
   const arr = Array.isArray(p?.images) ? p.images : []
@@ -43,12 +46,14 @@ const selectedProductImages = computed(() => getProductImages(selectedProduct.va
 function prevImage() {
   const n = selectedProductImages.value.length
   if (n <= 1) return
+  slideDir.value = 'prev'
   selectedImageIndex.value = (selectedImageIndex.value - 1 + n) % n
 }
 
 function nextImage() {
   const n = selectedProductImages.value.length
   if (n <= 1) return
+  slideDir.value = 'next'
   selectedImageIndex.value = (selectedImageIndex.value + 1) % n
 }
 
@@ -133,6 +138,7 @@ const filteredProducts = computed(() => {
 function openDetails(p) {
   selectedProduct.value = p
   selectedImageIndex.value = 0
+  slideDir.value = 'next'
   detailsOpen.value = true
 }
 
@@ -262,13 +268,21 @@ watch(categorySlug, load)
             @touchstart.passive="onTouchStart"
             @touchend.passive="onTouchEnd"
           >
-            <v-img class="detailsImg" :src="selectedProductImages[selectedImageIndex]" contain alt="">
-              <template #placeholder>
-                <div class="d-flex align-center justify-center fill-height">
-                  <v-progress-circular indeterminate size="32" width="3" color="cyan" />
-                </div>
-              </template>
-            </v-img>
+            <Transition :name="slideTransitionName">
+              <v-img
+                :key="selectedProductImages[selectedImageIndex]"
+                class="detailsImg"
+                :src="selectedProductImages[selectedImageIndex]"
+                contain
+                alt=""
+              >
+                <template #placeholder>
+                  <div class="d-flex align-center justify-center fill-height">
+                    <v-progress-circular indeterminate size="32" width="3" color="cyan" />
+                  </div>
+                </template>
+              </v-img>
+            </Transition>
             <v-btn
               v-if="selectedProductImages.length > 1"
               class="carouselBtn left"
@@ -518,16 +532,20 @@ watch(categorySlug, load)
 .detailsImgWrap {
   position: relative;
   width: 100%;
+  height: min(70vh, 520px);
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 0;
   border-radius: 12px;
   background: transparent;
+  overflow: hidden;
 }
 .detailsImg {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: min(70vh, 520px);
+  height: 100%;
   border-radius: 10px;
 }
 
@@ -546,7 +564,34 @@ watch(categorySlug, load)
 .carouselBtn.left { left: .35rem; }
 .carouselBtn.right { right: .35rem; }
 @media (max-width: 599px) {
-  .detailsImg { height: min(60vh, 420px); }
+  .detailsImgWrap { height: min(60vh, 420px); }
+}
+
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 260ms ease, opacity 260ms ease;
+}
+
+.slide-left-enter-from {
+  transform: translateX(14%);
+  opacity: 0;
+}
+
+.slide-left-leave-to {
+  transform: translateX(-14%);
+  opacity: 0;
+}
+
+.slide-right-enter-from {
+  transform: translateX(-14%);
+  opacity: 0;
+}
+
+.slide-right-leave-to {
+  transform: translateX(14%);
+  opacity: 0;
 }
 .kv {
   display: grid;

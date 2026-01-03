@@ -28,6 +28,8 @@ const error = ref('')
 const confirmOpen = ref(false)
 const confirmUrl = ref('')
 const confirmLoading = ref(false)
+const previewOpen = ref(false)
+const previewUrl = ref('')
 const inputEl = ref(null)
 const pendingFile = ref(null)
 const pendingFiles = ref([])
@@ -415,6 +417,18 @@ function setPrimaryUrl(url) {
   emit('update:modelValue', next)
 }
 
+function openImagePreview(url) {
+  const clean = String(url || '').trim()
+  if (!clean) return
+  previewUrl.value = clean
+  previewOpen.value = true
+}
+
+function closeImagePreview() {
+  previewOpen.value = false
+  previewUrl.value = ''
+}
+
 const optimizedSizeLabel = computed(() => {
   if (!pendingFile.value) return ''
   if (optimizing.value) return 'Se optimizează…'
@@ -650,12 +664,12 @@ defineExpose({
 
 
 		<div v-if="previewSrc" class="previewWrap">
-			<img class="preview" :src="previewSrc" alt="" />
+      <img class="preview previewClickable" :src="previewSrc" alt="" @click="openImagePreview(previewSrc)" />
 		</div>
 
     <div v-else-if="previewItems.length" class="previewWrap previewGrid">
       <div v-for="(item, idx) in previewItems" :key="`${item.source}-${idx}`" class="thumbWrap">
-        <img class="preview previewThumb" :src="item.url" alt="" />
+				<img class="preview previewThumb previewClickable" :src="item.url" alt="" @click="openImagePreview(item.url)" />
 
         <v-btn
           v-if="canPickPrimary && item.source === 'model'"
@@ -664,7 +678,7 @@ defineExpose({
           variant="text"
           :icon="isPrimaryUrl(item.url) ? 'mdi-star' : 'mdi-star-outline'"
           density="compact"
-          @click="setPrimaryUrl(item.url)"
+          @click.stop="setPrimaryUrl(item.url)"
         />
 
         <v-btn
@@ -674,7 +688,7 @@ defineExpose({
           icon="mdi-delete"
           density="compact"
           color="red"
-          @click="askDeleteImage(item.url)"
+          @click.stop="askDeleteImage(item.url)"
         />
       </div>
     </div>
@@ -711,6 +725,27 @@ defineExpose({
           <v-btn variant="text" :disabled="confirmLoading" @click="confirmOpen = false">Renunță</v-btn>
           <v-btn color="red" variant="flat" :loading="confirmLoading" :disabled="confirmLoading" @click="confirmDeleteImage">Șterge</v-btn>
         </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-if="previewOpen" v-model="previewOpen" max-width="90vw" height="100vh">
+      <v-card class="previewModalCard" elevation="2">
+        <v-btn
+          class="previewCloseBtn"
+          variant="text"
+          icon="mdi-close"
+          density="comfortable"
+          @click="closeImagePreview"
+        />
+        <v-card-text class="previewModalBody">
+          <v-img
+            v-if="previewUrl"
+            class="previewModalImg"
+            :src="previewUrl"
+            contain
+            alt=""
+          />
+        </v-card-text>
       </v-card>
     </v-dialog>
   </div>
@@ -755,6 +790,10 @@ defineExpose({
 .previewThumb {
   height: 90px;
   max-height: 90px;
+}
+
+.previewClickable {
+  cursor: pointer;
 }
 .deleteBtn {
   position: absolute;
@@ -807,5 +846,25 @@ defineExpose({
 .error {
   margin: 0;
   color: #fca5a5;
+}
+
+.previewModalCard {
+  position: relative;
+}
+
+.previewCloseBtn {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  z-index: 5;
+}
+
+.previewModalBody {
+  padding: 0.75rem;
+}
+
+.previewModalImg {
+  width: 100%;
+  height: 86vh;
 }
 </style>

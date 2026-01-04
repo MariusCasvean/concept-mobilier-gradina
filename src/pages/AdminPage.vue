@@ -1622,17 +1622,16 @@ async function saveNewAdminPassword() {
       <v-expand-transition>
         <div v-show="categoriesSectionOpen" class="stack">
           <div v-for="c in categories" :key="c.id" class="card category" :style="{ borderLeftColor: c.background || 'transparent' }">
-            <div class="row sp-between categoryHead">
-              <div class="stack">
-                <strong>{{ c.title }}</strong>
-                <p v-if="c.description" class="muted" style="white-space: pre-line;">{{ c.description }}</p>
-              </div>
+            <div class="categoryHead">
               <div class="catThumb" aria-hidden="true">
                 <img v-if="c.image" class="catThumbImg" :src="c.image" alt="" />
                 <div v-else class="catThumbEmpty">
                   <v-icon size="56">mdi-cloud-upload</v-icon>
                 </div>
               </div>
+
+              <strong class="categoryTitle">{{ c.title }}</strong>
+              <p v-if="c.description" class="muted categoryDescription">{{ c.description }}</p>
             </div>
 
             <div class="divider" />
@@ -1659,7 +1658,6 @@ async function saveNewAdminPassword() {
                   <div class="row sp-between">
                     <strong class="name mb-2">{{ p.title }}</strong>
                   </div>
-                  <p class="muted desc" :class="{ placeholder: !joinLines(p.description) }">{{ joinLines(p.description) || '' }}</p>
                 </v-card-text>
               </v-card>
             </div>
@@ -2847,13 +2845,14 @@ async function saveNewAdminPassword() {
   border-radius: 6px;
 }
 .categoryHead {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: .75rem;
-  align-items: flex-start;
+  display: flow-root;
 }
-.categoryHead > .stack {
-  min-width: 0;
+.categoryTitle {
+  display: block;
+}
+.categoryDescription {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 .divider {
   height: 2px;
@@ -2958,6 +2957,9 @@ async function saveNewAdminPassword() {
   overflow: hidden;
   display: grid;
   place-items: center;
+  float: right;
+  margin-left: .75rem;
+  margin-bottom: .5rem;
 }
 .catThumbImg {
   width: 100%;
@@ -3036,7 +3038,7 @@ async function saveNewAdminPassword() {
     border-radius: 10px;
   }
   .grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: .5rem;
     margin-top: .75rem;
   }
@@ -3058,6 +3060,12 @@ async function saveNewAdminPassword() {
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
+  }
+}
+
+@media (min-width: 960px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 </style>

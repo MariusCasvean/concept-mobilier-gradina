@@ -122,13 +122,11 @@ const filteredCategories = computed(() => {
       >
         <v-card-text class="body">
           <div class="head">
-            <div class="stack">
-              <strong class="title">{{ c.title }}</strong>
-              <p class="muted categoryDesc">{{ c.description }}</p>
-            </div>
             <div class="thumb" aria-hidden="true">
               <img v-if="c.image" class="thumbImg" :src="c.image" alt="" />
             </div>
+            <strong class="title">{{ c.title }}</strong>
+            <p class="muted categoryDesc">{{ c.description }}</p>
           </div>
 
           <div class="actions">
@@ -201,20 +199,14 @@ const filteredCategories = computed(() => {
 }
 .body {
   display: grid;
-  gap: .5rem;
 }
 
 .categoryDesc {
   white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 .head {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: .75rem;
-  align-items: flex-start;
-}
-.head > .stack {
-  min-width: 0;
+  display: flow-root;
 }
 .thumb {
   width: min(120px, 30vw);
@@ -223,6 +215,8 @@ const filteredCategories = computed(() => {
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.08);
   background: rgba(255,255,255,.06);
+  float: right;
+  margin-left: .75rem;
 }
 .thumbImg {
   width: 100%;
@@ -232,6 +226,8 @@ const filteredCategories = computed(() => {
 }
 .title {
   font-size: 1.05rem;
+  display: block;
+  margin-bottom: .25rem;
 }
 .actions {
   display: flex;
@@ -246,9 +242,6 @@ const filteredCategories = computed(() => {
 .cta:hover {
   filter: brightness(1.05);
   text-decoration: none;
-}
-.row p {
-  text-align: justify;
 }
 @media (min-width: 600px) {
   .grid {

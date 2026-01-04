@@ -121,7 +121,12 @@ const introProductsSectionOpen = ref(false)
 const introDiscountSectionOpen = ref(false)
 const introContactSectionOpen = ref(false)
 const footerSectionOpen = ref(false)
+const generalConfigSectionOpen = ref(false)
 const confidentialSectionOpen = ref(false)
+
+const carouselImageNumber = ref(true)
+const loadingGeneralConfig = ref(false)
+const savingGeneralConfig = ref(false)
 
 const newAdminPassword = ref('')
 const newAdminPasswordTouched = ref(false)
@@ -456,6 +461,58 @@ async function refresh() {
 }
 
 onMounted(refresh)
+
+async function loadGeneralConfig() {
+  if (!rtdb) return
+
+  loadingGeneralConfig.value = true
+  try {
+    const flagRef = dbRef(rtdb, 'configuration/carouselImageNumber')
+    const snap = await get(flagRef)
+
+    if (!snap.exists()) {
+      await set(flagRef, true)
+      carouselImageNumber.value = true
+      return
+    }
+
+    const raw = snap.val()
+    if (typeof raw === 'boolean') carouselImageNumber.value = raw
+    else {
+      await set(flagRef, true)
+      carouselImageNumber.value = true
+    }
+  } catch (e) {
+    // If config fails to load, keep safe default.
+    carouselImageNumber.value = true
+  } finally {
+    loadingGeneralConfig.value = false
+  }
+}
+
+async function saveCarouselImageNumber(next) {
+  if (!rtdb) {
+    showError('Realtime Database nu este configurat.')
+    carouselImageNumber.value = true
+    return
+  }
+  if (savingGeneralConfig.value) return
+
+  savingGeneralConfig.value = true
+  try {
+    const value = Boolean(next)
+    await set(dbRef(rtdb, 'configuration/carouselImageNumber'), value)
+    carouselImageNumber.value = value
+    showSuccess('Configurarea a fost salvată.')
+  } catch (e) {
+    error.value = e?.message || String(e)
+    showError('Nu am putut salva configurarea.')
+  } finally {
+    savingGeneralConfig.value = false
+  }
+}
+
+onMounted(loadGeneralConfig)
 
 let unsubscribeMessages = null
 onMounted(() => {
@@ -2459,6 +2516,48 @@ async function saveNewAdminPassword() {
                 </div>
               </div>
             </template>
+          </div>
+        </v-expand-transition>
+      </section>
+
+      <div class="divider" />
+
+      <section class="stack">
+        <div class="row sp-between">
+          <h2 class="sectionTitle">Configurări generale</h2>
+          <div class="row" style="gap: .25rem;">
+            <v-btn
+              :size="actionBtnSize"
+              variant="text"
+              :icon="chevronFor(generalConfigSectionOpen)"
+              @click="generalConfigSectionOpen = !generalConfigSectionOpen"
+            />
+          </div>
+        </div>
+
+        <v-expand-transition>
+          <div v-show="generalConfigSectionOpen" class="stack">
+            <div v-if="!rtdb" class="card">
+              <strong>Eroare</strong>
+              <p class="muted">Realtime Database nu este configurat.</p>
+            </div>
+
+            <div v-else class="card" style="position: relative;">
+              <v-overlay :model-value="loadingGeneralConfig || savingGeneralConfig" contained class="align-center justify-center">
+                <v-progress-circular indeterminate color="cyan" />
+              </v-overlay>
+
+              <div class="row d-flex" style="gap: .5rem; align-items: center;">
+                <v-checkbox
+                  v-model="carouselImageNumber"
+                  density="compact"
+                  hide-details
+                  :disabled="loadingGeneralConfig || savingGeneralConfig"
+                  @update:modelValue="saveCarouselImageNumber"
+                />
+                <span class="muted">Afișează numărul imaginii în carousel</span>
+              </div>
+            </div>
           </div>
         </v-expand-transition>
       </section>

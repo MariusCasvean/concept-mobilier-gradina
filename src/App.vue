@@ -1,7 +1,15 @@
 <script setup>
+import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import SiteHeader from './components/layout/SiteHeader.vue'
 import SiteFooter from './components/layout/SiteFooter.vue'
+import { useSiteStore } from './stores/site'
+
+const site = useSiteStore()
+
+onMounted(() => {
+  site.subscribeConfiguration()
+})
 </script>
 
 <template>

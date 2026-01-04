@@ -5,6 +5,7 @@ import { useDisplay } from 'vuetify'
 import PageLoader from '../components/ui/PageLoader.vue'
 import { normalizeForSearch } from '../lib/text'
 import { getCategoryBySlug, listProductsByCategory } from '../services/productsService'
+import { useSiteStore } from '../stores/site'
 
 const route = useRoute()
 
@@ -27,6 +28,9 @@ const selectedProduct = ref(null)
 const selectedImageIndex = ref(0)
 const slideDir = ref('next')
 
+const site = useSiteStore()
+const showCarouselImageCounter = computed(() => site.configuration?.carouselImageNumber !== false)
+
 const slideTransitionName = computed(() => (slideDir.value === 'next' ? 'slide-left' : 'slide-right'))
 
 function getProductImages(p) {
@@ -42,6 +46,13 @@ function getPrimaryImage(p) {
 }
 
 const selectedProductImages = computed(() => getProductImages(selectedProduct.value))
+
+const imageCounterText = computed(() => {
+  const n = selectedProductImages.value.length
+  if (n <= 0) return ''
+  const idx = Math.min(n - 1, Math.max(0, selectedImageIndex.value))
+  return `Imaginea ${idx + 1}/${n}`
+})
 
 function prevImage() {
   const n = selectedProductImages.value.length
@@ -173,6 +184,17 @@ async function load() {
 
 onMounted(load)
 watch(categorySlug, load)
+
+watch(
+  () => selectedProductImages.value.length,
+  (n) => {
+    if (n <= 0) {
+      selectedImageIndex.value = 0
+      return
+    }
+    selectedImageIndex.value = Math.min(n - 1, Math.max(0, selectedImageIndex.value))
+  }
+)
 </script>
 
 <template>
@@ -299,6 +321,8 @@ watch(categorySlug, load)
               density="compact"
               @click="nextImage"
             />
+
+            <div v-if="showCarouselImageCounter" class="carouselCounter">{{ imageCounterText }}</div>
           </div>
 
           <div class="kv">
@@ -531,6 +555,7 @@ watch(categorySlug, load)
 }
 .detailsImgWrap {
   position: relative;
+  isolation: isolate;
   width: 100%;
   height: min(70vh, 520px);
   display: flex;
@@ -547,6 +572,7 @@ watch(categorySlug, load)
   width: 100%;
   height: 100%;
   border-radius: 10px;
+  z-index: 1;
 }
 
 .detailsImgWrap :deep(img) {
@@ -557,12 +583,36 @@ watch(categorySlug, load)
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  z-index: 10;
   background: rgba(255,255,255,.10);
   border: 1px solid rgba(255,255,255,.12);
   backdrop-filter: blur(6px);
 }
 .carouselBtn.left { left: .35rem; }
 .carouselBtn.right { right: .35rem; }
+
+.carouselCounter {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: .15rem .5rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.18);
+  backdrop-filter: blur(6px);
+  font-size: .85rem;
+  line-height: 1;
+  user-select: none;
+}
+
+@media (max-width: 599px) {
+  .carouselCounter {
+    font-size: .72rem;
+    padding: .12rem .4rem;
+  }
+}
 @media (max-width: 599px) {
   .detailsImgWrap { height: min(60vh, 420px); }
 }

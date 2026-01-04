@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import PageLoader from '../components/ui/PageLoader.vue'
 import { getProductBySlugs } from '../services/productsService'
+import { useSiteStore } from '../stores/site'
 
 const route = useRoute()
 
@@ -16,6 +17,9 @@ const error = ref('')
 const selectedImageIndex = ref(0)
 const slideDir = ref('next')
 
+const site = useSiteStore()
+const showCarouselImageCounter = computed(() => site.configuration?.carouselImageNumber !== false)
+
 const slideTransitionName = computed(() => (slideDir.value === 'next' ? 'slide-left' : 'slide-right'))
 
 function getProductImages(p) {
@@ -27,6 +31,13 @@ function getProductImages(p) {
 }
 
 const productImages = computed(() => getProductImages(product.value))
+
+const imageCounterText = computed(() => {
+  const n = productImages.value.length
+  if (n <= 0) return ''
+  const idx = Math.min(n - 1, Math.max(0, selectedImageIndex.value))
+  return `Imaginea ${idx + 1}/${n}`
+})
 
 function prevImage() {
   const n = productImages.value.length
@@ -91,6 +102,17 @@ async function load() {
 
 onMounted(load)
 watch(() => `${categorySlug.value}/${productSlug.value}`, load)
+
+watch(
+  () => productImages.value.length,
+  (n) => {
+    if (n <= 0) {
+      selectedImageIndex.value = 0
+      return
+    }
+    selectedImageIndex.value = Math.min(n - 1, Math.max(0, selectedImageIndex.value))
+  }
+)
 </script>
 
 <template>
@@ -153,6 +175,8 @@ watch(() => `${categorySlug.value}/${productSlug.value}`, load)
           density="compact"
           @click="nextImage"
         />
+
+        <div v-if="showCarouselImageCounter" class="carouselCounter">{{ imageCounterText }}</div>
       </div>
       <v-card-text class="content">
         <div class="row sp-between">
@@ -178,6 +202,7 @@ watch(() => `${categorySlug.value}/${productSlug.value}`, load)
 }
 .imgWrap {
   position: relative;
+  isolation: isolate;
   width: 100%;
   height: 360px;
   display: flex;
@@ -191,6 +216,7 @@ watch(() => `${categorySlug.value}/${productSlug.value}`, load)
   inset: 0;
   width: 100%;
   height: 100%;
+  z-index: 1;
 }
 
 .slide-left-enter-active,
@@ -223,12 +249,36 @@ watch(() => `${categorySlug.value}/${productSlug.value}`, load)
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  z-index: 10;
   background: rgba(255,255,255,.10);
   border: 1px solid rgba(255,255,255,.12);
   backdrop-filter: blur(6px);
 }
 .carouselBtn.left { left: .35rem; }
 .carouselBtn.right { right: .35rem; }
+
+.carouselCounter {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: .15rem .5rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.18);
+  backdrop-filter: blur(6px);
+  font-size: .85rem;
+  line-height: 1;
+  user-select: none;
+}
+
+@media (max-width: 599px) {
+  .carouselCounter {
+    font-size: .72rem;
+    padding: .12rem .4rem;
+  }
+}
 .content {
   display: grid;
   gap: .75rem;

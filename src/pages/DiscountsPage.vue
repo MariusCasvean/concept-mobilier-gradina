@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import ProductCard from '../components/ui/ProductCard.vue'
 import PageLoader from '../components/ui/PageLoader.vue'
@@ -9,6 +9,8 @@ import { listCategories, listDiscountProducts, listIntroDiscountTexts } from '..
 
 const site = useSiteStore()
 const add = () => site.incrementCart()
+
+const showCarouselImageCounter = computed(() => site.configuration?.carouselImageNumber !== false)
 
 const loading = ref(true)
 const error = ref('')
@@ -43,6 +45,13 @@ function getPrimaryImage(p) {
 }
 
 const selectedProductImages = computed(() => getProductImages(selectedProduct.value))
+
+const imageCounterText = computed(() => {
+  const n = selectedProductImages.value.length
+  if (n <= 0) return ''
+  const idx = Math.min(n - 1, Math.max(0, selectedImageIndex.value))
+  return `Imaginea ${idx + 1}/${n}`
+})
 
 function prevImage() {
   const n = selectedProductImages.value.length
@@ -171,6 +180,17 @@ function closeDetails() {
   detailsOpen.value = false
 }
 
+watch(
+  () => selectedProductImages.value.length,
+  (n) => {
+    if (n <= 0) {
+      selectedImageIndex.value = 0
+      return
+    }
+    selectedImageIndex.value = Math.min(n - 1, Math.max(0, selectedImageIndex.value))
+  }
+)
+
 onMounted(async () => {
   loading.value = true
   error.value = ''
@@ -278,6 +298,8 @@ onMounted(async () => {
               density="compact"
               @click="nextImage"
             />
+
+            <div v-if="showCarouselImageCounter" class="carouselCounter">{{ imageCounterText }}</div>
           </div>
 
           <div class="kv">
@@ -384,6 +406,7 @@ onMounted(async () => {
 }
 .detailsImgWrap {
   position: relative;
+  isolation: isolate;
   width: 100%;
   height: min(70vh, 520px);
   display: flex;
@@ -400,6 +423,7 @@ onMounted(async () => {
   width: 100%;
   border-radius: 10px;
   height: 100%;
+  z-index: 1;
 }
 
 .detailsImgWrap :deep(img) {
@@ -410,12 +434,36 @@ onMounted(async () => {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  z-index: 10;
   background: rgba(255,255,255,.10);
   border: 1px solid rgba(255,255,255,.12);
   backdrop-filter: blur(6px);
 }
 .carouselBtn.left { left: .35rem; }
 .carouselBtn.right { right: .35rem; }
+
+.carouselCounter {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: .15rem .5rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.18);
+  backdrop-filter: blur(6px);
+  font-size: .85rem;
+  line-height: 1;
+  user-select: none;
+}
+
+@media (max-width: 599px) {
+  .carouselCounter {
+    font-size: .72rem;
+    padding: .12rem .4rem;
+  }
+}
 @media (max-width: 599px) {
   .detailsImgWrap { height: min(60vh, 420px); }
 }

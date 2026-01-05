@@ -248,7 +248,7 @@ watch(
       <v-card v-for="p in filteredProducts" :key="p.id || p.slug" class="product" elevation="2" :style="{ border: `1px solid ${p.background}`, borderLeft: `0.5rem solid ${p.background}` }">
         <div class="imgSlot" aria-hidden="true">
           <div
-            v-if="Boolean(p?.showProductDiscount) && String(p?.reducedPrice || '').trim()"
+            v-if="Boolean(p?.showProductDiscount)"
             class="discountBadge"
           >
             Reducere

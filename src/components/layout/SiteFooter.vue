@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAdminAuthStore } from '../../stores/adminAuth'
 import { subscribeFooterTexts } from '../../services/productsService'
+import { buildWhatsAppLink } from '../../lib/whatsapp'
 
 const router = useRouter()
 const adminAuth = useAdminAuthStore()
@@ -27,10 +28,7 @@ const footerLines = computed(() => {
   return fromDb.length ? fromDb : footerFallbackLines
 })
 
-// WhatsApp expects E.164 format (country code + number, no leading 0).
-// 0759 323 577 -> +40 759 323 577 -> 40759323577
-const whatsappPhoneE164 = '40759323577'
-const whatsappHref = computed(() => `https://wa.me/${whatsappPhoneE164}`)
+const whatsappHref = computed(() => buildWhatsAppLink())
 
 let unsubscribeFooter = null
 

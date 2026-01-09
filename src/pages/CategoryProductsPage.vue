@@ -4,6 +4,7 @@ import { useRoute, RouterLink } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import PageLoader from '../components/ui/PageLoader.vue'
 import { normalizeForSearch } from '../lib/text'
+import { openWhatsApp } from '../lib/whatsapp'
 import { getCategoryBySlug, listProductsByCategory } from '../services/productsService'
 import { useSiteStore } from '../stores/site'
 
@@ -155,6 +156,23 @@ function openDetails(p) {
 
 function closeDetails() {
   detailsOpen.value = false
+}
+
+function requestCustomOffer() {
+  const baseText = 'Bună ziua, aș dori informații suplimentare despre acest produs. În cazul în care este posibil, o ofertă personalizată.'
+
+  const title = String(selectedProduct.value?.title ?? '').trim()
+  const cat = String(categoryTitle.value ?? '').trim()
+  const url = typeof window !== 'undefined' ? String(window.location?.href ?? '').trim() : ''
+
+  const lines = [baseText]
+  if (cat) lines.push('',`Categorie: ${cat}`)
+  if (title) lines.push(`Produs: ${title}`)
+  if (url) lines.push(`Link: ${url}`)
+
+  lines.push('', 'Vă mulțumesc!')
+
+  openWhatsApp({ text: lines.join('\n') })
 }
 
 async function load() {
@@ -374,6 +392,16 @@ watch(
           </div>
         </v-card-text>
         <v-card-actions>
+          <v-btn
+            color="cyan"
+            variant="outlined"
+            class="mb-2 ml-2"
+            :size="detailsBtnSize"
+            @click="requestCustomOffer"
+          >
+            <v-icon icon="mdi-whatsapp" class="mr-1" color="green" />
+            Cere ofertă personalizată
+          </v-btn>
           <v-spacer />
           <v-btn color="cyan" variant="flat" class="mb-2 mr-2" :size="detailsBtnSize" @click="closeDetails">OK</v-btn>
         </v-card-actions>

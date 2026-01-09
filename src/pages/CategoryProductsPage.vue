@@ -395,7 +395,7 @@ watch(
           <v-btn
             color="cyan"
             variant="outlined"
-            class="mb-2 ml-2"
+            class="ml-2"
             :size="detailsBtnSize"
             @click="requestCustomOffer"
           >
@@ -403,7 +403,7 @@ watch(
             Cere ofertă personalizată
           </v-btn>
           <v-spacer />
-          <v-btn color="cyan" variant="flat" class="mb-2 mr-2" :size="detailsBtnSize" @click="closeDetails">OK</v-btn>
+          <v-btn color="cyan" variant="flat" class="mr-2" :size="detailsBtnSize" @click="closeDetails">OK</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

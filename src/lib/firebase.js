@@ -7,6 +7,7 @@ import { getFirestore } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { getStorage } from 'firebase/storage'
 import { getDatabase } from 'firebase/database'
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 
 function hasFirebaseEnv() {
   return Boolean(
@@ -22,6 +23,7 @@ let auth = null
 let storage = null
 let rtdb = null
 let analytics = null
+let appCheck = null
 
 try {
   const firebaseConfig = hasFirebaseEnv()
@@ -49,6 +51,30 @@ try {
       }
 
   app = initializeApp(firebaseConfig)
+
+  // --- App Check (reCAPTCHA v3) ---
+  // In dev mode, enable the debug provider so localhost is not blocked.
+  // After first run, copy the debug token from the browser console and
+  // register it in Firebase Console → App Check → Manage debug tokens.
+  if (import.meta.env.DEV) {
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_FIREBASE_APPCHECK_DEBUG_TOKEN || true
+  }
+
+  const recaptchaSiteKey =
+    import.meta.env.VITE_FIREBASE_APPCHECK_RECAPTCHA_SITE_KEY ||
+    '6Ld4aXQsAAAAAFzO2LSlH7e0Q0axnPow65UtGtQJ'
+
+  try {
+    appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    })
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[firebase] App Check initialization failed:', e?.message || e)
+    appCheck = null
+  }
+
   db = getFirestore(app)
   auth = getAuth(app)
   // Explicitly bind to the configured bucket.
@@ -69,7 +95,8 @@ try {
   storage = null
   rtdb = null
   analytics = null
+  appCheck = null
 }
 
-export { app, db, auth, storage, rtdb, analytics }
+export { app, db, auth, storage, rtdb, analytics, appCheck }
 export const isFirebaseConfigured = () => Boolean(app)

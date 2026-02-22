@@ -232,6 +232,9 @@ onMounted(async () => {
     <div v-else-if="discounted.length === 0" class="card">
       <strong>Momentan nu există produse la reducere.</strong>
       <p class="muted">Revino mai târziu pentru oferte noi.</p>
+      <div class="emptyActions">
+        <v-btn class="cta" to="/products">Explorează produse</v-btn>
+      </div>
     </div>
 
     <div v-else class="grid">
@@ -360,6 +363,21 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.emptyActions {
+  margin-top: 1.25rem;
+  display: flex;
+  justify-content: center;
+}
+.cta {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #0b1220;
+  border-radius: 6px;
+}
+.cta:hover {
+  filter: brightness(1.05);
+  text-decoration: none;
+}
+
 .modalCard {
   position: relative;
 }

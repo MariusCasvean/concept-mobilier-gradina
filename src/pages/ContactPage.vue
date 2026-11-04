@@ -1,7 +1,8 @@
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useDisplay } from 'vuetify'
-import { app, rtdb } from '../lib/firebase'
+import { rtdb } from '../lib/firebase'
+import { push, ref as dbRef } from 'firebase/database'
 import { listContactInfo, listIntroContactTexts } from '../services/productsService'
 
 const contact = reactive({
@@ -131,8 +132,7 @@ async function send() {
     return
   }
 
-  const databaseURL = app?.options?.databaseURL
-  if (!databaseURL) {
+  if (!rtdb) {
     error.value = 'Firebase nu este configurat (lipsește databaseURL).'
     await nextTick()
     forceScrollTop()
@@ -151,16 +151,8 @@ async function send() {
       createdAt: Date.now(),
     }
 
-    const res = await fetch(`${databaseURL.replace(/\/$/, '')}/messages.json`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      throw new Error(text || `Request failed (${res.status})`)
-    }
+    // The SDK attaches the App Check token automatically (raw REST fetch does not).
+    await push(dbRef(rtdb, 'messages'), data)
 
     contact.name = ''
     contact.phone = ''
